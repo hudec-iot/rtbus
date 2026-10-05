@@ -380,7 +380,7 @@ def main() -> int:
     parser.add_argument("--vendor", default=DEFAULT_VENDOR)
     parser.add_argument("--architecture", default=DEFAULT_ARCHITECTURE)
     parser.add_argument("--maintainer", default="RTBus contributors")
-    parser.add_argument("--website-url", default="https://github.com/BookerChang/rtbus")
+    parser.add_argument("--website-url", default="https://github.com/hudec-iot/rtbus")
     parser.add_argument("--email", default="packages@example.com")
     parser.add_argument(
         "--tool-archive",

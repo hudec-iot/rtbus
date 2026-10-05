@@ -1,0 +1,109 @@
+name: Test Public Release Trigger
+
+on:
+  workflow_dispatch:
+    inputs:
+      public_ref:
+        description: 'Public branch or tag to release (creates a real release)'
+        required: true
+        default: master
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: public-release-trigger
+  cancel-in-progress: false
+
+jobs:
+  trigger:
+    if: github.repository == 'hudec-iot/rtbus-private'
+    runs-on: self-hosted
+    timeout-minutes: 25
+
+    steps:
+      - name: Create public repository token
+        id: release-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          owner: hudec-iot
+          repositories: rtbus
+          permission-actions: write
+
+      - name: Trigger and verify public release
+        env:
+          GH_TOKEN: ${{ steps.release-token.outputs.token }}
+          PUBLIC_REF: ${{ inputs.public_ref }}
+        shell: bash
+        run: |
+          set -eu
+          python3 - <<'PY'
+          import json
+          import os
+          import time
+          from urllib.error import HTTPError
+          from urllib.parse import quote
+          from urllib.request import Request, urlopen
+
+          repo = "hudec-iot/rtbus"
+          workflow = ".github-ci_arduino_package.yml"
+          base = f"https://api.github.com/repos/{repo}"
+
+          def request(url, payload=None, authenticated=True):
+              headers = {
+                  "Accept": "application/vnd.github+json",
+                  "X-GitHub-Api-Version": "2026-03-10",
+                  "User-Agent": "rtbus-private-release-trigger",
+              }
+              if authenticated:
+                  headers["Authorization"] = f"Bearer {os.environ['GH_TOKEN']}"
+              data = None if payload is None else json.dumps(payload).encode()
+              if data is not None:
+                  headers["Content-Type"] = "application/json"
+              try:
+                  with urlopen(Request(url, data=data, headers=headers), timeout=30) as response:
+                      return json.load(response)
+              except HTTPError as error:
+                  raise SystemExit(f"GitHub API returned HTTP {error.code}: {error.read().decode()}")
+
+          dispatched = request(
+              f"{base}/actions/workflows/{workflow}/dispatches",
+              {"ref": os.environ["PUBLIC_REF"]},
+          )
+          run_id = dispatched["workflow_run_id"]
+          run_url = dispatched["html_url"]
+          print(f"Public workflow: {run_url}", flush=True)
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
+              summary.write(f"Public release workflow: [run {run_id}]({run_url})\n\n")
+
+          deadline = time.monotonic() + 20 * 60
+          while time.monotonic() < deadline:
+              run = request(f"{base}/actions/runs/{run_id}")
+              print(f"Status: {run['status']}; conclusion: {run['conclusion']}", flush=True)
+              if run["status"] == "completed":
+                  if run["conclusion"] != "success":
+                      raise SystemExit(f"Public release failed: {run['conclusion']}. See {run_url}")
+                  break
+              time.sleep(15)
+          else:
+              raise SystemExit(f"Timed out waiting for public release; it may still be running: {run_url}")
+
+          # Read public release data without requesting Contents permission for the App.
+          version_url = f"https://raw.githubusercontent.com/{repo}/{run['head_sha']}/.version"
+          with urlopen(version_url, timeout=30) as response:
+              version = "".join(response.read().decode().splitlines()[0].split())
+          tag = f"v{version}"
+          release = request(f"{base}/releases/tags/{quote(tag, safe='')}", authenticated=False)
+          archive = f"rtduo-{version}.tar.gz"
+          if not any(asset["name"] == archive and asset["size"] > 0 for asset in release["assets"]):
+              raise SystemExit(f"Release {tag} is missing a nonempty {archive}")
+          index = request(f"{base}/releases/tags/package-index", authenticated=False)
+          if not any(asset["name"] == "package_rtbus_index.json" and asset["size"] > 0 for asset in index["assets"]):
+              raise SystemExit("Package index release is missing package_rtbus_index.json")
+          print(f"Verified release: {release['html_url']}", flush=True)
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
+              summary.write(f"Verified SDK release: [{tag}]({release['html_url']})\n\n")
+              summary.write(f"Verified package index: [package-index]({index['html_url']})\n")
+          PY

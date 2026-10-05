@@ -21,7 +21,7 @@ rtbus:rtduo:RAK4631
 Add the RTBus package index URL to Arduino IDE:
 
 ```text
-https://github.com/BookerChang/rtbus/releases/download/package-index/package_rtbus_index.json
+https://github.com/hudec-iot/rtbus/releases/download/package-index/package_rtbus_index.json
 ```
 
 In Arduino IDE, open **File > Preferences**, paste the URL into **Additional
