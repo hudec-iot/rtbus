@@ -21,7 +21,6 @@ jobs:
         shell: bash
         run: |
           set -eu
-
           version="$(sed -n '1{s/[[:space:]]//g;p;q;}' .version)"
           tag="v${version}"
 
