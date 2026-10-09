@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   trigger:
-    if: github.repository == 'hudec-iot/rtbus-private'
+    if: github.repository == 'hudec-iot/rtbus-internal'
     runs-on: self-hosted
     timeout-minutes: 25
 
@@ -57,7 +57,7 @@ jobs:
               headers = {
                   "Accept": "application/vnd.github+json",
                   "X-GitHub-Api-Version": "2026-03-10",
-                  "User-Agent": "rtbus-private-release-trigger",
+                  "User-Agent": "rtbus-internal-release-trigger",
               }
               if authenticated:
                   headers["Authorization"] = f"Bearer {os.environ['GH_TOKEN']}"
@@ -83,7 +83,7 @@ jobs:
                   "client_payload": {
                       "public_sha": public_sha,
                       "request_id": request_id,
-                      "source_repository": "hudec-iot/rtbus-private",
+                      "source_repository": "hudec-iot/rtbus-internal",
                   },
               },
           )

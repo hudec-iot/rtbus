@@ -18,7 +18,7 @@ permissions: {}
 
 jobs:
   publish:
-    if: github.repository == 'hudec-iot/rtbus-private'
+    if: github.repository == 'hudec-iot/rtbus-internal'
     runs-on: self-hosted
     timeout-minutes: 5
     steps:
@@ -52,7 +52,7 @@ jobs:
               "client_payload": {
                   "public_ref": os.environ["PUBLIC_REF"],
                   "image_tag": os.environ["IMAGE_TAG"],
-                  "source_repository": "hudec-iot/rtbus-private",
+                  "source_repository": "hudec-iot/rtbus-internal",
               },
           }
           headers = {
@@ -60,7 +60,7 @@ jobs:
               "X-GitHub-Api-Version": "2026-03-10",
               "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
               "Content-Type": "application/json",
-              "User-Agent": "rtbus-private-packages-trigger",
+              "User-Agent": "rtbus-internal-packages-trigger",
           }
           try:
               with urlopen(Request(url, data=json.dumps(payload).encode(), headers=headers), timeout=30) as response:

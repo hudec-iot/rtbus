@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   release:
-    if: github.repository == 'hudec-iot/rtbus' && github.event.client_payload.source_repository == 'hudec-iot/rtbus-private'
+    if: github.repository == 'hudec-iot/rtbus' && github.event.client_payload.source_repository == 'hudec-iot/rtbus-internal'
     runs-on: ubuntu-latest
 
     steps:
