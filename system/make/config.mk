@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: MPL-2.0
+
+PROJECT := rtbus
+
+ARDUINO_CONFIG ?= arduino-cli.yaml
+ARDUINO_SKETCH ?= libraries/RTDuo/development/Project
+ARDUINO_BUILD_ROOT ?= $(ARDUINO_SKETCH)/build
+BOOTLOADER ?= bootloader
+BOOTLOADER_APP_DIR ?= bootloader
+ZEPHYR_BUILD_ROOT ?= build.zephyr
+ZEPHYR_BUILD_TMP_ROOT ?= build.zephyr.tmp
+ZEPHYR_SHARE_ROOT ?= zephyr-share
+
+ARDUINO_LOCAL_COMPILER_PATH ?= /opt/toolchains/zephyr-sdk-$(ZEPHYR_SDK_VERSION)/gnu/arm-zephyr-eabi/bin/
+ARDUINO_LOCAL_HOST_COMPILER_PATH ?= /usr/bin/
+ARDUINO_LOCAL_HOST_COMPILER_CMD ?= tcc
+ARDUINO_LOCAL_HOST_COMPILER_FLAGS ?=
+JLINK_CMD ?= myjlink
+JLINK_SERVER_DIR ?= /home/usera/001.mypjt/002.server_segger
+JLINK_EXE ?= $(JLINK_SERVER_DIR)/.res/JLink.linux/JLinkExe
+JLINK_IP ?= 127.0.0.1:19020
+JLINK_IF ?= SWD
+JLINK_SPEED ?= 4000
+JLINK_ERASE_SCRIPT ?= /tmp/rtbus-jlink-erase.jlink
+RUNTIME_JFLASH_HEX ?= $(notdir $(RUNTIME_PACKAGE_IMAGE))
+BOOTLOADER_JFLASH_HEX ?= $(notdir $(BOOTLOADER_PACKAGE_IMAGE))
+APPLICATION_FLASH_DIR ?= $(ARDUINO_APPLICATION_BUILD_DIR)
+APPLICATION_FLASH_HEX ?= $(ARDUINO_APPLICATION_JFLASH_HEX)

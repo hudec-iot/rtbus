@@ -13,7 +13,7 @@
 #include <sys/stat.h>
 #endif
 
-#include "include/runtime_api_core.h"
+#include "framework/abi/include/runtime_api_slots.h"
 
 #define COMPONENT_MAGIC 0x5746434dU
 #define HEADER_VERSION 2U

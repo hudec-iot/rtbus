@@ -5,7 +5,7 @@ const path = require('path');
 
 const SDK_VERSION = '1.0.0';
 const BUILDER_IMAGE = `localhost/rtbus-zephyr:arm-${SDK_VERSION}`;
-const DOCKERFILE = 'docker/Dockerfile.embedded-arm';
+const DOCKERFILE = 'tools/docker/Dockerfile.embedded-arm';
 const TERMINAL_PROFILE_ID = 'rtduo.builderShell';
 const TERMINAL_PROFILE_TITLE = 'RTDuo Builder Shell';
 const BOARDS = [

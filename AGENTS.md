@@ -69,26 +69,39 @@ future RTBus task event handling.
 - `zephyr/runtime/`: RTBus runtime firmware.
 - `zephyr/bootloader.mk`: MCUboot build wrapper.
 - `bootloader/mcuboot/`: west-provided MCUboot source.
-- `application.mk`: standalone native C application build path.
+- `Makefile`: root entry for Arduino application, runtime, and bootloader builds.
+- `system/make/`: shared project build fragments.
+- `tools/docker/`, `tools/scripts/`: host-side container and packaging tools.
+- `tools/scripts/package_arduino.mk`: isolated Arduino package staging and release
+  archive/index rules; included by the root Makefile.
+- `system/make/core.mk`: pure native GCC compilation, linking, and image packing
+  rules; do not add container orchestration here.
+- `cores/<profile>/Makefile`: standalone native application entry; starts the
+  builder container and invokes `system/make/core.mk` inside it.
+- `tools/docker/docker.mk`: shared container settings and execution parameters.
+- `system/framework/abi/include/`: runtime/application ABI contract.
+- `system/framework/include/`: application API declarations and wrappers.
+- `system/startup.S`: application entry and ABI call thunks.
+- `system/header.c`: host-side application image packer; keep it in the build flow.
 - `cores/<profile>/main.c`: Arduino and standalone native application entry,
   selected by the standard Arduino `ARDUINO` macro.
 - `bootloader/`, `modules/`: upstream or vendored platform pieces.
 - `.arduino/package/`: local Arduino SDK staging.
 - `<sketch>/build/<BOARD>/`: Arduino application build output.
 - `cores/<profile>/firmware/build.*/`: runtime and bootloader build output.
-- `build.zephyr/`, `build.zephyr.tmp/`: standalone native application build output.
+- `cores/<profile>/build/`: standalone native application build output.
 
-## Supported Board Profiles
+## Active Board Profiles
+
+The profiles currently selected by `system/make/boards.mk` are:
 
 - `rak4631`
-- `rak3172`
-- `rak3172f`
 - `rak3172p`
 - `rak3172t`
-- `rak11720`
 - `rak4200`
 
-Use `BOARD_PROFILE=<profile>` for board-specific build targets.
+Use `BOARD_PROFILE=<profile>` for root board-specific commands. Native builds
+select the profile through the Makefile in each core directory.
 
 ## Common Commands
 
@@ -110,13 +123,25 @@ Compile the default Arduino sketch:
 make application BOARD_PROFILE=rak4631
 ```
 
-Build Zephyr runtime, bootloader, or native application:
+Build Zephyr runtime and bootloader:
 
 ```sh
 make runtime BOARD_PROFILE=rak4631
 make bootloader BOARD_PROFILE=rak4631
-make application BOARD_PROFILE=rak4631
 ```
+
+Build a standalone native C application through its core entry:
+
+```sh
+cd cores/rak4631
+make
+```
+
+Zephyr GCC runs inside the builder container. Native output defaults to the
+core directory's `build/`; `make clean` there removes that output. Set `VM`
+and `DOCKER_IMAGE` to select the container CLI and builder image.
+Root `make application` and `make application.clean` always use Arduino.
+Do not reintroduce `application.gcc` or `APPLICATION_BACKEND` routing.
 
 Inspect selected board profile variables:
 
@@ -172,5 +197,6 @@ make runtime BOARD_PROFILE=rak4631
 If build output is needed, artifacts are exported under:
 
 ```text
-zephyr-share/runtime/<board>/
+cores/<profile>/firmware/build.runtime/
+cores/<profile>/firmware/runtime.signed.hex
 ```

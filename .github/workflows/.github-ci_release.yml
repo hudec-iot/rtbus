@@ -54,7 +54,7 @@ jobs:
         run: |
           set -eu
 
-          python3 scripts/package_arduino.py \
+          python3 tools/scripts/package_arduino.py \
             --output-dir dist/arduino \
             --index-file package_rtbus_index.json \
             --version "${VERSION}" \

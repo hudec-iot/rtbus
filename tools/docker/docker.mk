@@ -28,10 +28,12 @@ ZEPHYR_SDK_VERSION ?= 1.0.0
 ZEPHYR_VERSION ?= v4.4.0
 ARDUINO_CLI_VERSION ?= 1.5.1
 ZEPHYR_BASE_IMAGE ?= ghcr.io/embeddedcontainers/zephyr:arm-$(ZEPHYR_SDK_VERSION)SDK
-RTBUS_BUILDER_DOCKERFILE ?= docker/Dockerfile.embedded-arm
+RTBUS_BUILDER_DOCKERFILE ?= tools/docker/Dockerfile.embedded-arm
 RTBUS_BUILDER_IMAGE ?= localhost/rtbus-zephyr:arm-$(ZEPHYR_SDK_VERSION)
 DOCKER_IMAGE ?= $(RTBUS_BUILDER_IMAGE)
 DOCKER_WORK ?= /workdir
+DOCKER_HOST_WORKDIR ?= $(CURDIR)
+docker_path = $(if $(filter /%,$(1)),$(1),$(DOCKER_WORK)/$(1))
 RTBUS_ZEPHYR_WORKSPACE ?= /opt/rtbus/zephyr-workspace
 RTBUS_CONTAINER_BUILD_ROOT ?= /tmp/rtbus-build
 RTBUS_ZEPHYR_VOLUME ?= rtbus-zephyr-workspace-$(ZEPHYR_VERSION)
@@ -127,7 +129,7 @@ docker.images:
 .PHONY: docker.shell
 docker.shell: docker.image
 	$(VM) run -it --user root --rm \
-		-v $(CURDIR):$(DOCKER_WORK) \
+		-v $(DOCKER_HOST_WORKDIR):$(DOCKER_WORK) \
 		-v $(RTBUS_ZEPHYR_VOLUME):$(RTBUS_ZEPHYR_WORKSPACE) \
 		--tmpfs $(DOCKER_WORK)/.west \
 		-w $(DOCKER_WORK) \
@@ -136,3 +138,18 @@ docker.shell: docker.image
 		-e ZEPHYR_SDK_INSTALL_DIR=/opt/toolchains/zephyr-sdk-$(ZEPHYR_SDK_VERSION) \
 		-e ZEPHYR_TOOLCHAIN_VARIANT=zephyr \
 		$(DOCKER_IMAGE)
+
+DOCKER_RUN_BASE = $(VM) run --rm \
+	-v $(DOCKER_HOST_WORKDIR):$(DOCKER_WORK) \
+	-v $(RTBUS_ZEPHYR_VOLUME):$(RTBUS_ZEPHYR_WORKSPACE) \
+	--tmpfs $(DOCKER_WORK)/.west \
+	-w $(DOCKER_WORK) \
+	-e RTBUS_ZEPHYR_WORKSPACE=$(RTBUS_ZEPHYR_WORKSPACE) \
+	-e ZEPHYR_BASE=$(RTBUS_ZEPHYR_WORKSPACE)/zephyr \
+	-e ZEPHYR_SDK_INSTALL_DIR=/opt/toolchains/zephyr-sdk-$(ZEPHYR_SDK_VERSION) \
+	-e ZEPHYR_TOOLCHAIN_VARIANT=zephyr
+
+DOCKER_RUN = $(DOCKER_RUN_BASE) $(DOCKER_IMAGE)
+
+.PHONY: builder.image
+builder.image: docker.image

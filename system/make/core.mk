@@ -2,13 +2,15 @@
 #
 # Native application GCC build path shared by RTDuo cores.
 
+.DEFAULT_GOAL := all
+
 BOARD_PROFILE ?= rak4631
 TARGET ?= application
 MODULE ?= application
 MODULE_NAME ?= application
 
-APPLICATION_MAKEFILE_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
-REPO_ROOT := $(APPLICATION_MAKEFILE_DIR)
+CORE_BUILD_RULES_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+REPO_ROOT := $(abspath $(CORE_BUILD_RULES_DIR)/../..)
 CORES_DIR := $(REPO_ROOT)/cores
 SYSTEM_DIR := $(REPO_ROOT)/system
 PROFILE_DIR := $(CORES_DIR)/$(BOARD_PROFILE)
@@ -20,12 +22,17 @@ endif
 
 include $(PROFILE_MK)
 
-BUILD_DIR ?= $(REPO_ROOT)/build.rtbus.application.$(BOARD_PROFILE)
+ZEPHYR_SDK_VERSION ?= 1.0.0
+ZEPHYR_SDK_INSTALL_DIR ?= /opt/toolchains/zephyr-sdk-$(ZEPHYR_SDK_VERSION)
+GCC_PATH ?= $(ZEPHYR_SDK_INSTALL_DIR)/gnu/arm-zephyr-eabi/bin
+BUILD_DIR ?= $(PROFILE_DIR)/build
 SRC ?= $(PROFILE_DIR)/main.c
 STARTUP_SRC ?= $(SYSTEM_DIR)/startup.S
 CORE_SOURCES ?= $(PROFILE_DIR)/wiring_time.c
 LD_SCRIPT ?= $(PROFILE_DIR)/linker.ld
-ABI_INCLUDE ?= $(SYSTEM_DIR)/include
+FRAMEWORK_DIR ?= $(SYSTEM_DIR)/framework
+ABI_INCLUDE ?= $(FRAMEWORK_DIR)/abi/include
+FRAMEWORK_INCLUDE ?= $(FRAMEWORK_DIR)/include
 PACK_SRC ?= $(SYSTEM_DIR)/header.c
 APPLICATION_VERSION ?= 0.1.0
 APPLICATION_BUILD ?= 0
@@ -36,7 +43,7 @@ $(error APPLICATION_TARGET_MCU is required by $(PROFILE_MK))
 endif
 
 PREFIX ?= arm-zephyr-eabi-
-ifdef GCC_PATH
+ifneq ($(strip $(GCC_PATH)),)
 TOOLCHAIN_PREFIX := $(GCC_PATH)/$(PREFIX)
 else
 TOOLCHAIN_PREFIX := $(PREFIX)
@@ -55,7 +62,7 @@ MCU := $(CPU) -mthumb $(FPU) $(FLOAT_ABI)
 
 OPT ?= -Os
 C_DEFS ?=
-C_INCLUDES ?= -I$(ABI_INCLUDE)
+C_INCLUDES ?= -I$(ABI_INCLUDE) -I$(FRAMEWORK_INCLUDE)
 
 CFLAGS += $(MCU) $(C_DEFS) $(C_INCLUDES) $(OPT) -Wall -Wextra \
 	-ffreestanding -fdata-sections -ffunction-sections -fno-common
@@ -108,3 +115,4 @@ $(SIGNED_HEX): $(BIN) $(ELF) $(PACKER)
 
 clean:
 	rm -rf $(BUILD_DIR)
+

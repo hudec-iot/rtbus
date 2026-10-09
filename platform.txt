@@ -25,7 +25,7 @@ compiler.S.flags=-c {compiler.common.flags} -x assembler-with-cpp
 compiler.ar.flags=rcs
 
 build.extra_flags=
-build.abi.includes=-I{runtime.platform.path}/system/include
+build.abi.includes=-I{runtime.platform.path}/system/framework/abi/include -I{runtime.platform.path}/system/framework/include
 build.application.pack=true
 build.application.name=application
 build.application.version=0.1.0

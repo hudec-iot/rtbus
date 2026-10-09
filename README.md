@@ -116,7 +116,7 @@ updated independently.
 ## Board Profiles
 
 The build is selected with `BOARD_PROFILE=<profile>`. Current active profiles
-are defined by `zephyr/profiles.mk`:
+are defined by `system/make/boards.mk`:
 
 - `rak4631`
 - `rak3172p`
@@ -161,13 +161,44 @@ make application \
   ARDUINO_SKETCH=libraries/RTDuo/examples/HelloWorld
 ```
 
-Build runtime, bootloader, or the native application path:
+Build the Zephyr runtime and bootloader:
 
 ```sh
 make runtime BOARD_PROFILE=rak4631
 make bootloader BOARD_PROFILE=rak4631
-make application BOARD_PROFILE=rak4631
 ```
+
+Build a standalone native C application from its core directory:
+
+```sh
+cd cores/rak4631
+make
+```
+
+The board-local Makefile starts the builder container and invokes
+`system/make/core.mk` inside it. Zephyr GCC and the image packer run in the
+container; no host Zephyr SDK installation is required. Native artifacts are
+written to `cores/<profile>/build/`. Run `make clean` in the same core directory
+to remove them.
+
+To use the published builder image, specify it at either build entry point:
+
+```sh
+# From the repository root: Arduino application
+make application BOARD_PROFILE=rak4631 VM=podman \
+  DOCKER_IMAGE=ghcr.io/hudec-iot/rtbus-zephyr:1.0.0
+
+# From cores/rak4631: standalone native application
+make VM=podman DOCKER_IMAGE=ghcr.io/hudec-iot/rtbus-zephyr:1.0.0
+```
+
+The default image is the locally built `localhost/rtbus-zephyr:arm-1.0.0`.
+The root `make application` and `make application.clean` commands always use
+the Arduino flow. Native builds use `cores/<profile>/Makefile`; there is no
+root GCC backend selector.
+
+`arduino-cli.yaml` configures the repository-local Arduino data, downloads,
+and package directories used by the root Arduino commands.
 
 Runtime and bootloader builds are exported under:
 
@@ -276,7 +307,17 @@ Main source areas:
 - `cores/`: RTDuo core implementations and profile-owned Zephyr config.
 - `variants/`: Arduino variant headers.
 - `libraries/`: Arduino libraries and examples.
-- `system/`: ABI headers, image header generation, and upload tooling.
+- `system/framework/abi/include/`: shared ABI version, slots, events, and data layouts.
+- `system/framework/include/`: application API declarations and wrappers.
+- `system/make/`: shared build configuration, board selection, Arduino,
+  flash, CI, and native GCC rules.
+- `system/startup.S`: application entry and ABI call thunks.
+- `system/header.c`: host-side image packer, compiled inside the builder.
+- `system/ymodem_upload.c`: application upload tooling.
+- `tools/`: host-side container and packaging tools.
+- `tools/scripts/package_arduino.mk`: local Arduino staging and release package/index rules.
+- `tools/docker/docker.mk`: shared builder image and container execution settings.
+- `cores/<profile>/Makefile`: native application container entry point.
 - `zephyr/runtime/`: thin Zephyr runtime application.
 - `zephyr/modules/rtbus/`: RTBus subsystem implementation.
 

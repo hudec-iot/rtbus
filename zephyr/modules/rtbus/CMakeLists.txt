@@ -23,6 +23,7 @@ if(CONFIG_RTBUS_LIB)
 
   target_include_directories(app PRIVATE
     include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../system/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../system/framework/abi/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../system/framework/include
   )
 endif()
