@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import os
@@ -14,6 +15,7 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import quote
+from urllib.request import urlopen
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -371,6 +373,59 @@ def build_index(
     }
 
 
+def merge_index(previous: dict, current: dict) -> dict:
+    """Preserve published versions and hosts, replacing matching new entries."""
+    merged = copy.deepcopy(previous)
+    packages = merged.get("packages")
+    if not isinstance(packages, list):
+        raise ValueError("Previous index must contain a packages array")
+    for package in packages:
+        if not isinstance(package, dict) or not isinstance(package.get("name"), str):
+            raise ValueError("Invalid package in previous index")
+        for field in ("platforms", "tools"):
+            if not isinstance(package.get(field, []), list):
+                raise ValueError(f"Invalid {field} in previous index")
+        for platform in package.get("platforms", []):
+            if not isinstance(platform, dict) or not all(
+                isinstance(platform.get(key), str) for key in ("architecture", "version")
+            ):
+                raise ValueError("Invalid platform in previous index")
+        for tool in package.get("tools", []):
+            if not isinstance(tool, dict) or not all(
+                isinstance(tool.get(key), str) for key in ("name", "version")
+            ) or not isinstance(tool.get("systems"), list):
+                raise ValueError("Invalid tool in previous index")
+            if any(not isinstance(system, dict) or not isinstance(system.get("host"), str)
+                   for system in tool["systems"]):
+                raise ValueError("Invalid tool system in previous index")
+
+    for new_package in current["packages"]:
+        matches = [p for p in packages if p["name"] == new_package["name"]]
+        if len(matches) > 1:
+            raise ValueError("Duplicate package names in previous index")
+        if not matches:
+            packages.append(copy.deepcopy(new_package))
+            continue
+        package = matches[0]
+        package.update({k: copy.deepcopy(v) for k, v in new_package.items()
+                        if k not in ("platforms", "tools")})
+        platforms = {(p["architecture"], p["version"]): p
+                     for p in package.get("platforms", [])}
+        for platform in new_package["platforms"]:
+            platforms[(platform["architecture"], platform["version"])] = copy.deepcopy(platform)
+        package["platforms"] = list(platforms.values())
+        tools = {(t["name"], t["version"]): t for t in package.get("tools", [])}
+        for new_tool in new_package["tools"]:
+            key = (new_tool["name"], new_tool["version"])
+            tool = tools.setdefault(key, {})
+            systems = {s["host"]: s for s in tool.get("systems", [])}
+            systems.update({s["host"]: copy.deepcopy(s) for s in new_tool["systems"]})
+            tool.update({k: copy.deepcopy(v) for k, v in new_tool.items() if k != "systems"})
+            tool["systems"] = [systems[host] for host in sorted(systems)]
+        package["tools"] = [tools[key] for key in sorted(tools)]
+    return merged
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", default="dist/arduino")
@@ -382,6 +437,9 @@ def main() -> int:
     parser.add_argument("--maintainer", default="RTBus contributors")
     parser.add_argument("--website-url", default="https://github.com/hudec-iot/rtbus")
     parser.add_argument("--email", default="packages@example.com")
+    previous_source = parser.add_mutually_exclusive_group()
+    previous_source.add_argument("--previous-index", help="Existing local index to merge")
+    previous_source.add_argument("--previous-index-url", help="Published index URL to fetch and merge; failures abort")
     parser.add_argument(
         "--tool-archive",
         action="append",
@@ -394,6 +452,20 @@ def main() -> int:
         ),
     )
     args = parser.parse_args()
+
+    # Fetch/validate before packaging. Never replace history with a fresh index
+    # when a requested source is unavailable or malformed.
+    previous = None
+    if args.previous_index_url:
+        with urlopen(args.previous_index_url, timeout=60) as stream:
+            previous = json.load(stream)
+    elif args.previous_index:
+        with (REPO_ROOT / args.previous_index).open(encoding="utf-8") as stream:
+            previous = json.load(stream)
+    if args.previous_index_url or args.previous_index:
+        if not isinstance(previous, dict):
+            raise ValueError("Previous index must be a JSON object")
+        merge_index(previous, {"packages": []})
 
     output_dir = (REPO_ROOT / args.output_dir).resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -429,6 +501,9 @@ def main() -> int:
         tools=tools,
         base_url=base_url,
     )
+
+    if previous is not None:
+        index = merge_index(previous, index)
 
     index_path = output_dir / args.index_file
     with index_path.open("w", encoding="utf-8") as stream:

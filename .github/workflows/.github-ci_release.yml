@@ -8,6 +8,11 @@ on:
 permissions:
   contents: write
 
+# Serialize fetching and replacing the shared index across release requests.
+concurrency:
+  group: arduino-package-index-${{ github.repository }}
+  cancel-in-progress: false
+
 jobs:
   release:
     if: github.repository == 'hudec-iot/rtbus' && github.event.client_payload.source_repository == 'hudec-iot/rtbus-internal'
@@ -57,6 +62,7 @@ jobs:
           python3 tools/scripts/package_arduino.py \
             --output-dir dist/arduino \
             --index-file package_rtbus_index.json \
+            --previous-index-url "https://github.com/${GITHUB_REPOSITORY}/releases/download/package-index/package_rtbus_index.json" \
             --version "${VERSION}" \
             --base-url "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG_NAME}"
 

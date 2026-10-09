@@ -296,6 +296,17 @@ cores/<profile>/zephyr/bootloader.conf
 
 ## Package Layout
 
+Release CI fetches the published `package-index/package_rtbus_index.json`
+before generating the next index. It retains previous platform versions and
+tool versions/hosts, replacing only matching platform architecture/version
+and tool name/version/host entries. Fetch or JSON validation failures abort
+publication rather than overwrite the index without its history.
+
+The packaging script accepts `--previous-index-url URL` or
+`--previous-index PATH` for this merge. Without either option, local packaging
+still generates a standalone index. Release runs are serialized around the
+shared index update.
+
 The Makefile stages this repository as a local Arduino package at:
 
 ```text
