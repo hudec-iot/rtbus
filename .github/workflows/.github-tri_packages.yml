@@ -30,7 +30,7 @@ jobs:
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
           owner: hudec-iot
           repositories: rtbus
-          permission-actions: write
+          permission-contents: write
 
       - name: Trigger public image publication
         env:
@@ -46,10 +46,14 @@ jobs:
           from urllib.error import HTTPError
           from urllib.request import Request, urlopen
 
-          url = "https://api.github.com/repos/hudec-iot/rtbus/actions/workflows/.github-ci_packages.yml/dispatches"
+          url = "https://api.github.com/repos/hudec-iot/rtbus/dispatches"
           payload = {
-              "ref": os.environ["PUBLIC_REF"],
-              "inputs": {"image_tag": os.environ["IMAGE_TAG"]},
+              "event_type": "rtbus-builder-publish",
+              "client_payload": {
+                  "public_ref": os.environ["PUBLIC_REF"],
+                  "image_tag": os.environ["IMAGE_TAG"],
+                  "source_repository": "hudec-iot/rtbus-private",
+              },
           }
           headers = {
               "Accept": "application/vnd.github+json",
@@ -60,12 +64,13 @@ jobs:
           }
           try:
               with urlopen(Request(url, data=json.dumps(payload).encode(), headers=headers), timeout=30) as response:
-                  dispatched = json.load(response)
+                  if response.status != 204:
+                      raise SystemExit(f"Unexpected GitHub API status: {response.status}")
           except HTTPError as error:
               raise SystemExit(f"GitHub API returned HTTP {error.code}: {error.read().decode()}")
 
-          run_url = dispatched["html_url"]
-          print(f"Public image publication started: {run_url}", flush=True)
+          workflow_url = "https://github.com/hudec-iot/rtbus/actions/workflows/.github-ci_packages.yml"
+          print(f"Public image publication event accepted. Check runs: {workflow_url}", flush=True)
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
-              summary.write(f"Public image publication: [view run]({run_url})\n")
+              summary.write(f"Dispatch accepted; check [public workflow runs]({workflow_url}) for publication status.\n")
           PY

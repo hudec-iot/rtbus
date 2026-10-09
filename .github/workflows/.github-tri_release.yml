@@ -31,6 +31,7 @@ jobs:
           owner: hudec-iot
           repositories: rtbus
           permission-actions: write
+          permission-contents: write
 
       - name: Trigger and verify public release
         env:
@@ -43,6 +44,7 @@ jobs:
           import json
           import os
           import time
+          import uuid
           from urllib.error import HTTPError
           from urllib.parse import quote
           from urllib.request import Request, urlopen
@@ -64,21 +66,42 @@ jobs:
                   headers["Content-Type"] = "application/json"
               try:
                   with urlopen(Request(url, data=data, headers=headers), timeout=30) as response:
+                      if response.status == 204:
+                          return None
                       return json.load(response)
               except HTTPError as error:
                   raise SystemExit(f"GitHub API returned HTTP {error.code}: {error.read().decode()}")
 
-          dispatched = request(
-              f"{base}/actions/workflows/{workflow}/dispatches",
-              {"ref": os.environ["PUBLIC_REF"]},
+          public_sha = request(f"{base}/commits/{quote(os.environ['PUBLIC_REF'], safe='')}")["sha"]
+          request_id = str(uuid.uuid4())
+          run_name = f"Arduino package release - {request_id}"
+          deadline = time.monotonic() + 20 * 60
+          request(
+              f"{base}/dispatches",
+              {
+                  "event_type": "rtbus-arduino-release",
+                  "client_payload": {
+                      "public_sha": public_sha,
+                      "request_id": request_id,
+                      "source_repository": "hudec-iot/rtbus-private",
+                  },
+              },
           )
-          run_id = dispatched["workflow_run_id"]
-          run_url = dispatched["html_url"]
+          print(f"Dispatch accepted; waiting for public run ({request_id})", flush=True)
+          while time.monotonic() < deadline:
+              runs = request(f"{base}/actions/workflows/{workflow}/runs?event=repository_dispatch&per_page=100")
+              matched = next((run for run in runs["workflow_runs"] if run["display_title"] == run_name), None)
+              if matched is not None:
+                  run_id = matched["id"]
+                  run_url = matched["html_url"]
+                  break
+              time.sleep(15)
+          else:
+              raise SystemExit(f"Timed out waiting for public workflow to start; request ID: {request_id}")
           print(f"Public workflow: {run_url}", flush=True)
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
               summary.write(f"Public release workflow: [run {run_id}]({run_url})\n\n")
 
-          deadline = time.monotonic() + 20 * 60
           while time.monotonic() < deadline:
               run = request(f"{base}/actions/runs/{run_id}")
               print(f"Status: {run['status']}; conclusion: {run['conclusion']}", flush=True)
@@ -90,8 +113,9 @@ jobs:
           else:
               raise SystemExit(f"Timed out waiting for public release; it may still be running: {run_url}")
 
-          # Read public release data without requesting Contents permission for the App.
-          version_url = f"https://raw.githubusercontent.com/{repo}/{run['head_sha']}/.version"
+          # repository_dispatch run head_sha refers to the default branch,
+          # so verify the exact source commit sent in the payload instead.
+          version_url = f"https://raw.githubusercontent.com/{repo}/{public_sha}/.version"
           with urlopen(version_url, timeout=30) as response:
               version = "".join(response.read().decode().splitlines()[0].split())
           tag = f"v{version}"

@@ -1,20 +1,26 @@
 name: CI Arduino Package Release
+run-name: Arduino package release - ${{ github.event.client_payload.request_id }}
 
 on:
-  workflow_dispatch:
+  repository_dispatch:
+    types: [rtbus-arduino-release]
 
 permissions:
   contents: write
 
 jobs:
   release:
+    if: github.repository == 'hudec-iot/rtbus' && github.event.client_payload.source_repository == 'hudec-iot/rtbus-private'
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
+        id: checkout
         uses: actions/checkout@v4
         with:
           submodules: false
+          ref: ${{ github.event.client_payload.public_sha }}
+          persist-credentials: false
 
       - name: Determine release version
         id: version
@@ -68,7 +74,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ steps.version.outputs.tag }}
           VERSION: ${{ steps.version.outputs.version }}
-          TARGET_COMMITISH: ${{ github.sha }}
+          TARGET_COMMITISH: ${{ steps.checkout.outputs.commit }}
         shell: bash
         run: |
           set -eu
