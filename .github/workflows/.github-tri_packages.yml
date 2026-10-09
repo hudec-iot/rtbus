@@ -1,0 +1,20 @@
+name: Publish RTBus builder image
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Image version tag (independent of the Zephyr SDK version)'
+        required: true
+        default: '1.0.0'
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    uses: ./.github/workflows/.github-ci_packages.yml
+    with:
+      image_tag: ${{ inputs.image_tag }}
