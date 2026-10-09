@@ -1,4 +1,4 @@
-name: Arduino Package Release
+name: CI Arduino Package Release
 
 on:
   workflow_dispatch:

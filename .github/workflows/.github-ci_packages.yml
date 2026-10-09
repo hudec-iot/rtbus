@@ -1,6 +1,13 @@
-name: Build and push RTBus builder image
+name: CI Build and push RTBus builder image
 
 on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Image version tag (independent of the Zephyr SDK version)'
+        required: true
+        default: '1.0.0'
+        type: string
   workflow_call:
     inputs:
       image_tag:

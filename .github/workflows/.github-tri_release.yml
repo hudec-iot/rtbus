@@ -1,4 +1,4 @@
-name: Test Public Release Trigger
+name: Trigger - CI Arduino Package Release
 
 on:
   workflow_dispatch:
@@ -48,7 +48,7 @@ jobs:
           from urllib.request import Request, urlopen
 
           repo = "hudec-iot/rtbus"
-          workflow = ".github-ci_arduino_package.yml"
+          workflow = ".github-ci_release.yml"
           base = f"https://api.github.com/repos/{repo}"
 
           def request(url, payload=None, authenticated=True):

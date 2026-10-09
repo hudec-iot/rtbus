@@ -1,4 +1,4 @@
-name: Publish RTBus builder image
+name: Trigger - CI Build and push RTBus builder image
 
 on:
   workflow_dispatch:
@@ -8,13 +8,64 @@ on:
         required: true
         default: '1.0.0'
         type: string
+      public_ref:
+        description: 'Public repository branch or tag to build'
+        required: true
+        default: master
+        type: string
 
-permissions:
-  contents: read
-  packages: write
+permissions: {}
 
 jobs:
   publish:
-    uses: ./.github/workflows/.github-ci_packages.yml
-    with:
-      image_tag: ${{ inputs.image_tag }}
+    if: github.repository == 'hudec-iot/rtbus-private'
+    runs-on: self-hosted
+    timeout-minutes: 5
+    steps:
+      - name: Create public repository token
+        id: packages-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          owner: hudec-iot
+          repositories: rtbus
+          permission-actions: write
+
+      - name: Trigger public image publication
+        env:
+          GH_TOKEN: ${{ steps.packages-token.outputs.token }}
+          PUBLIC_REF: ${{ inputs.public_ref }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
+        shell: bash
+        run: |
+          set -eu
+          python3 - <<'PY'
+          import json
+          import os
+          from urllib.error import HTTPError
+          from urllib.request import Request, urlopen
+
+          url = "https://api.github.com/repos/hudec-iot/rtbus/actions/workflows/.github-ci_packages.yml/dispatches"
+          payload = {
+              "ref": os.environ["PUBLIC_REF"],
+              "inputs": {"image_tag": os.environ["IMAGE_TAG"]},
+          }
+          headers = {
+              "Accept": "application/vnd.github+json",
+              "X-GitHub-Api-Version": "2026-03-10",
+              "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
+              "Content-Type": "application/json",
+              "User-Agent": "rtbus-private-packages-trigger",
+          }
+          try:
+              with urlopen(Request(url, data=json.dumps(payload).encode(), headers=headers), timeout=30) as response:
+                  dispatched = json.load(response)
+          except HTTPError as error:
+              raise SystemExit(f"GitHub API returned HTTP {error.code}: {error.read().decode()}")
+
+          run_url = dispatched["html_url"]
+          print(f"Public image publication started: {run_url}", flush=True)
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
+              summary.write(f"Public image publication: [view run]({run_url})\n")
+          PY
