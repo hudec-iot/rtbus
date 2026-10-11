@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MPL-2.0
 THIS_MAKEFILE := $(lastword $(MAKEFILE_LIST))
 THIS_DIR := $(dir $(abspath $(THIS_MAKEFILE)))
 REPO_ROOT ?= $(abspath $(THIS_DIR)/../../../..)

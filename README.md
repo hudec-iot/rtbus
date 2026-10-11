@@ -134,10 +134,21 @@ make board.profile BOARD_PROFILE=rak4631
 
 ## Build
 
-The local build flow uses a Podman builder image:
+Builds use `ghcr.io/hudec-iot/rtbus-zephyr:1.0.0` through Docker or Podman.
+The image is pulled automatically when it is not available locally.
+
+The Dockerfile remains in `tools/docker/` for image maintenance. Publication
+uses the existing GitHub Actions flow: manually run `.github-tri_packages.yml`
+in `hudec-iot/rtbus-internal` with `image_tag` and `public_ref`. It dispatches
+`.github-ci_packages.yml` in `hudec-iot/rtbus`, which builds the image through
+`make -C tools/docker build`, authenticates with its `GITHUB_TOKEN`, and pushes
+the image directly to GHCR. GitHub Actions owns login and publication;
+`tools/docker/Makefile` only builds the image.
+
+To rebuild the image locally from the repository root:
 
 ```sh
-make docker.build
+make -C tools/docker build
 ```
 
 List Arduino boards exposed by the local package:
@@ -181,18 +192,15 @@ container; no host Zephyr SDK installation is required. Native artifacts are
 written to `cores/<profile>/build/`. Run `make clean` in the same core directory
 to remove them.
 
-To use the published builder image, specify it at either build entry point:
+`VM` selects Docker or Podman, and `DOCKER_IMAGE` overrides the published
+image at either the root or board-local build entry. To try Dockerfile changes
+locally before publishing:
 
 ```sh
-# From the repository root: Arduino application
-make application BOARD_PROFILE=rak4631 VM=podman \
-  DOCKER_IMAGE=ghcr.io/hudec-iot/rtbus-zephyr:1.0.0
-
-# From cores/rak4631: standalone native application
-make VM=podman DOCKER_IMAGE=ghcr.io/hudec-iot/rtbus-zephyr:1.0.0
+make -C tools/docker build RTBUS_BUILDER_IMAGE=localhost/rtbus-zephyr:dev
+make application BOARD_PROFILE=rak4631 DOCKER_IMAGE=localhost/rtbus-zephyr:dev
 ```
 
-The default image is the locally built `localhost/rtbus-zephyr:arm-1.0.0`.
 The root `make application` and `make application.clean` commands always use
 the Arduino flow. Native builds use `cores/<profile>/Makefile`; there is no
 root GCC backend selector.
@@ -296,7 +304,7 @@ cores/<profile>/zephyr/bootloader.conf
 
 ## Package Layout
 
-Release CI fetches the published `package-index/package_rtbus_index.json`
+Release CI calls `make -C tools/scripts package` and fetches the published `package-index/package_rtbus_index.json`
 before generating the next index. It retains previous platform versions and
 tool versions/hosts, replacing only matching platform architecture/version
 and tool name/version/host entries. Fetch or JSON validation failures abort
@@ -326,7 +334,7 @@ Main source areas:
 - `system/header.c`: host-side image packer, compiled inside the builder.
 - `system/ymodem_upload.c`: application upload tooling.
 - `tools/`: host-side container and packaging tools.
-- `tools/scripts/package_arduino.mk`: local Arduino staging and release package/index rules.
+- `tools/scripts/Makefile`: release package/index generation invoked by GitHub Actions.
 - `tools/docker/docker.mk`: shared builder image and container execution settings.
 - `cores/<profile>/Makefile`: native application container entry point.
 - `zephyr/runtime/`: thin Zephyr runtime application.
@@ -337,3 +345,10 @@ Main source areas:
 This repository contains the RTBus RTDuo Arduino platform. Native runtime ABI
 names use RTBus terminology, and the public Arduino package identity remains
 `rtbus:rtduo`.
+
+## License
+
+RTBus-owned source is licensed under MPL-2.0; see LICENSE and NOTICE.
+Third-party software keeps its own licenses. See THIRD_PARTY_NOTICES.md and
+SOURCE_INFO.md for component information, source availability, and firmware
+provenance requirements. These documents are included in SDK packages.

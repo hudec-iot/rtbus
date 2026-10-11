@@ -72,8 +72,8 @@ future RTBus task event handling.
 - `Makefile`: root entry for Arduino application, runtime, and bootloader builds.
 - `system/make/`: shared project build fragments.
 - `tools/docker/`, `tools/scripts/`: host-side container and packaging tools.
-- `tools/scripts/package_arduino.mk`: isolated Arduino package staging and release
-  archive/index rules; included by the root Makefile.
+- `tools/scripts/Makefile`: standalone release archive/index generation for
+  GitHub Actions; local Arduino staging lives in `system/make/arduino.mk`.
 - `system/make/core.mk`: pure native GCC compilation, linking, and image packing
   rules; do not add container orchestration here.
 - `cores/<profile>/Makefile`: standalone native application entry; starts the
@@ -105,11 +105,20 @@ select the profile through the Makefile in each core directory.
 
 ## Common Commands
 
-Build the Podman builder image:
+Normal builds use the published GHCR image. The internal repository's
+`.github-tri_packages.yml` triggers the public `.github-ci_packages.yml`
+workflow, which builds through `tools/docker/Makefile` and handles GHCR
+login and push directly.
+
+Build the builder image locally:
 
 ```sh
-make docker.build
+make -C tools/docker build
 ```
+
+`tools/docker/Makefile` owns image building only; GitHub Actions owns publishing.
+`tools/docker/docker.mk` owns shared container execution settings and pulls
+missing images for application, runtime, and bootloader builds.
 
 List Arduino boards:
 

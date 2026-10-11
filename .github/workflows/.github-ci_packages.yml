@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MPL-2.0
 name: CI Build and push RTBus builder image
 
 on:
@@ -37,7 +38,7 @@ jobs:
           echo "RTBUS_IMAGE=ghcr.io/${IMAGE_OWNER,,}/rtbus-zephyr:$IMAGE_TAG" >> "$GITHUB_ENV"
 
       - name: Build builder image
-        run: make docker.build VM=docker RTBUS_BUILDER_IMAGE="$RTBUS_IMAGE"
+        run: make -C tools/docker build VM=docker RTBUS_BUILDER_IMAGE="$RTBUS_IMAGE"
 
       - name: Login to GitHub Container Registry
         env:

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MPL-2.0
 RUNTIME_APP_DIR := zephyr/runtime
 RUNTIME_BOARD_DIR ?= cores/$(BOARD_PROFILE)/zephyr
 BOARD_RUNTIME_CONF ?= $(RUNTIME_BOARD_DIR)/runtime.conf
@@ -39,7 +40,7 @@ RUNTIME_BOARD_ARGS += -DZEPHYR_EXTRA_MODULES="$(RUNTIME_ZEPHYR_MODULES)"
 endif
 
 .PHONY: runtime
-runtime: builder.image zephyr.workspace
+runtime: zephyr.workspace
 	@test -n "$(ZEPHYR_BOARD)" || { echo "Unsupported BOARD_PROFILE=$(BOARD_PROFILE)" >&2; exit 1; }
 	$(DOCKER_RUN) sh -ec 'rm -rf "$(RUNTIME_CONTAINER_BUILD_DIR)" "$(DOCKER_WORK)/$(RUNTIME_BUILD_DIR)"; cd "$(RTBUS_ZEPHYR_WORKSPACE)" && west build -b "$(ZEPHYR_BOARD)" -d "$(RUNTIME_CONTAINER_BUILD_DIR)" -s "$(DOCKER_WORK)/$(RUNTIME_APP_DIR)" -- -DCMAKE_EXPORT_COMPILE_COMMANDS=ON $(RUNTIME_BOARD_ARGS); mkdir -p "$$(dirname "$(DOCKER_WORK)/$(RUNTIME_BUILD_DIR)")"; cp -a "$(RUNTIME_CONTAINER_BUILD_DIR)" "$(DOCKER_WORK)/$(RUNTIME_BUILD_DIR)"; echo "Runtime build exported: $(DOCKER_WORK)/$(RUNTIME_BUILD_DIR)"'
 

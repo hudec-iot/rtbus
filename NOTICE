@@ -24,3 +24,7 @@ upstream sources.
 RAKWireless board names such as RAK4631, RAK3172, RAK11720, and RAK4200 refer
 to the target hardware modules and boards. They do not imply that this package
 is published by or officially supported by RAKWireless.
+
+Source availability: https://github.com/hudec-iot/rtbus
+See SOURCE_INFO.md for source locations and binary provenance, and
+THIRD_PARTY_NOTICES.md for third-party components and unresolved provenance.

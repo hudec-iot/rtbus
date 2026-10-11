@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MPL-2.0
 name: Test Local Build
 
 on:
@@ -21,6 +22,7 @@ jobs:
         hostname
         uname -a
         pwd
+        ls -la
         ls -la
         make board.profile BOARD_PROFILE=rak4631
         make application bootloader runtime BOARD_PROFILE=rak4631

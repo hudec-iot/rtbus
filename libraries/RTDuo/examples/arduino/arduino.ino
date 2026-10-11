@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: MPL-2.0 */
 /*
  * Native RTDuo application test code for Arduino CLI.
  *

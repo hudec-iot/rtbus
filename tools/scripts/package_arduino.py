@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MPL-2.0
 """Create an Arduino Boards Manager package index for RTDuo."""
 
 from __future__ import annotations
@@ -192,7 +193,13 @@ def copy_platform_tree(destination: Path) -> None:
         else:
             shutil.copy2(source, target)
 
-    for optional in ("LICENSE", "NOTICE", "README.md"):
+    for required in ("LICENSE", "NOTICE", "SOURCE_INFO.md", "THIRD_PARTY_NOTICES.md"):
+        source = REPO_ROOT / required
+        if not source.is_file():
+            raise FileNotFoundError(f"Required distribution notice missing: {source}")
+        shutil.copy2(source, destination / required)
+
+    for optional in ("README.md",):
         source = REPO_ROOT / optional
         if source.exists():
             shutil.copy2(source, destination / optional)

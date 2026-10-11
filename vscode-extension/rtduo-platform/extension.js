@@ -1,11 +1,10 @@
+/* SPDX-License-Identifier: MPL-2.0 */
 const vscode = require('vscode');
 const cp = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-const SDK_VERSION = '1.0.0';
-const BUILDER_IMAGE = `localhost/rtbus-zephyr:arm-${SDK_VERSION}`;
-const DOCKERFILE = 'tools/docker/Dockerfile.embedded-arm';
+const BUILDER_IMAGE = 'ghcr.io/hudec-iot/rtbus-zephyr:1.0.0';
 const TERMINAL_PROFILE_ID = 'rtduo.builderShell';
 const TERMINAL_PROFILE_TITLE = 'RTDuo Builder Shell';
 const BOARDS = [
@@ -24,7 +23,6 @@ function activate(context) {
   output = vscode.window.createOutputChannel('RTDuo');
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('rtduo.buildBuilderImage', buildBuilderImage),
     vscode.commands.registerCommand('rtduo.compileArduinoExample', compileArduinoExample),
     vscode.commands.registerCommand('rtduo.openBuilderShell', openBuilderShell),
     vscode.window.registerTerminalProfileProvider(TERMINAL_PROFILE_ID, {
@@ -51,8 +49,7 @@ function workspaceRoot() {
 }
 
 function isRTDuoWorkspace(root) {
-  return fs.existsSync(path.join(root, DOCKERFILE)) &&
-    fs.existsSync(path.join(root, 'Makefile')) &&
+  return fs.existsSync(path.join(root, 'Makefile')) &&
     fs.existsSync(path.join(root, 'platform.txt')) &&
     fs.existsSync(path.join(root, 'boards.txt')) &&
     fs.existsSync(path.join(root, 'libraries', 'RTDuo'));
@@ -69,15 +66,6 @@ function requireWorkspace() {
   return root;
 }
 
-async function buildBuilderImage() {
-  const root = requireWorkspace();
-
-  output.show(true);
-  log('Building RTDuo builder image');
-  await runMake(root, ['docker.build']);
-  log(`[OK] Builder image ready: ${BUILDER_IMAGE}`);
-}
-
 async function compileArduinoExample() {
   const root = requireWorkspace();
   const board = await vscode.window.showQuickPick(BOARDS, {
@@ -90,7 +78,14 @@ async function compileArduinoExample() {
 
   output.show(true);
   log(`Building RTDuo application: ${board}`);
-  await runMake(root, ['application', `BOARD_PROFILE=${board}`]);
+  const cli = await findContainerCli();
+  await ensureBuilderImage(root, cli);
+  const cliArgument = process.platform === 'win32'
+    ? `DOCKER_EXE=${cli.command}`
+    : `VM=${cli.command}`;
+  await runCommand('make', [
+    'application', `BOARD_PROFILE=${board}`, `DOCKER_IMAGE=${BUILDER_IMAGE}`, cliArgument
+  ], { cwd: root, env: cli.env });
   log(`[OK] Application build complete: ${board}`);
 }
 
@@ -109,7 +104,7 @@ async function builderShellTerminalOptions() {
 
   output.show(true);
   log(`[OK] Container CLI: ${cli.command}`);
-  await ensureBuilderImage(root);
+  await ensureBuilderImage(root, cli);
 
   return {
     name: TERMINAL_PROFILE_TITLE,
@@ -126,8 +121,7 @@ async function builderShellTerminalOptions() {
   };
 }
 
-async function ensureBuilderImage(root) {
-  const cli = await findContainerCli();
+async function ensureBuilderImage(root, cli) {
   const exists = await commandSucceeds(cli.command, ['image', 'inspect', BUILDER_IMAGE], {
     cwd: root,
     env: cli.env
@@ -136,18 +130,11 @@ async function ensureBuilderImage(root) {
     return;
   }
 
-  const choice = await vscode.window.showWarningMessage(
-    `Missing builder image: ${BUILDER_IMAGE}`,
-    'Build Image'
-  );
-  if (choice !== 'Build Image') {
-    throw new Error(`Missing builder image: ${BUILDER_IMAGE}`);
-  }
-  await buildBuilderImage();
-}
-
-async function runMake(root, args) {
-  await runCommand('make', args, { cwd: root, env: process.env });
+  log(`Pulling builder image: ${BUILDER_IMAGE}`);
+  await runCommand(cli.command, ['pull', BUILDER_IMAGE], {
+    cwd: root,
+    env: cli.env
+  });
 }
 
 async function findContainerCli() {

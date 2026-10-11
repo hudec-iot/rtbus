@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: MPL-2.0 */
 #ifndef RTBUS_H_
 #define RTBUS_H_
 

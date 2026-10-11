@@ -1,7 +1,7 @@
 {
   "name": "rtduo-platform",
   "displayName": "RTDuo Platform",
-  "description": "Build and use the RTDuo Arduino builder environment through Docker or Podman.",
+  "description": "Use the published RTDuo Arduino builder image through Docker or Podman.",
   "version": "0.0.1",
   "license": "MPL-2.0",
   "publisher": "rtbus",
@@ -13,7 +13,6 @@
   ],
   "activationEvents": [
     "onStartupFinished",
-    "onCommand:rtduo.buildBuilderImage",
     "onCommand:rtduo.compileArduinoExample",
     "onCommand:rtduo.openBuilderShell"
   ],
@@ -28,10 +27,6 @@
       ]
     },
     "commands": [
-      {
-        "command": "rtduo.buildBuilderImage",
-        "title": "RTDuo: Build Builder Image"
-      },
       {
         "command": "rtduo.compileArduinoExample",
         "title": "RTDuo: Compile Arduino Example"

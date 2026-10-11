@@ -6,7 +6,7 @@ BOARD_PROFILE ?= rak4200
 CORE_MAKEFILE_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 REPO_ROOT := $(abspath $(CORE_MAKEFILE_DIR)/../..)
 DOCKER_HOST_WORKDIR := $(REPO_ROOT)
-include $(REPO_ROOT)/tools/docker/docker.mk
+include $(REPO_ROOT)/system/make/docker.mk
 
 BUILD_DIR ?= $(CORE_MAKEFILE_DIR)/build
 SRC ?= $(REPO_ROOT)/cores/$(BOARD_PROFILE)/main.c

@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: MPL-2.0 */
 #ifndef RTBUS_EMOS_H_
 #define RTBUS_EMOS_H_
 

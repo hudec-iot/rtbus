@@ -1,15 +1,10 @@
 # SPDX-License-Identifier: MPL-2.0
 
-PROJECT := rtbus
-
 ARDUINO_CONFIG ?= arduino-cli.yaml
 ARDUINO_SKETCH ?= libraries/RTDuo/development/Project
 ARDUINO_BUILD_ROOT ?= $(ARDUINO_SKETCH)/build
 BOOTLOADER ?= bootloader
 BOOTLOADER_APP_DIR ?= bootloader
-ZEPHYR_BUILD_ROOT ?= build.zephyr
-ZEPHYR_BUILD_TMP_ROOT ?= build.zephyr.tmp
-ZEPHYR_SHARE_ROOT ?= zephyr-share
 
 ARDUINO_LOCAL_COMPILER_PATH ?= /opt/toolchains/zephyr-sdk-$(ZEPHYR_SDK_VERSION)/gnu/arm-zephyr-eabi/bin/
 ARDUINO_LOCAL_HOST_COMPILER_PATH ?= /usr/bin/

@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: MPL-2.0 */
 / {
 	model = "RAKWireless RAK3172 WisDuo LPWAN Module with a STM32WLE5CC SoC";
 	compatible = "stm32,rak3172_stm32wl";

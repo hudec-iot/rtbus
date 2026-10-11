@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: MPL-2.0 */
 
 #include <zephyr/drivers/uart.h>
 #include <zephyr/logging/log.h>

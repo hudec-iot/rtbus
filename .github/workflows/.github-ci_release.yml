@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MPL-2.0
 name: CI Arduino Package Release
 run-name: Arduino package release - ${{ github.event.client_payload.request_id }}
 
@@ -59,12 +60,10 @@ jobs:
         run: |
           set -eu
 
-          python3 tools/scripts/package_arduino.py \
-            --output-dir dist/arduino \
-            --index-file package_rtbus_index.json \
-            --previous-index-url "https://github.com/${GITHUB_REPOSITORY}/releases/download/package-index/package_rtbus_index.json" \
-            --version "${VERSION}" \
-            --base-url "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG_NAME}"
+          make -C tools/scripts package \
+            ARDUINO_RELEASE_VERSION="${VERSION}" \
+            ARDUINO_PREVIOUS_INDEX_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/package-index/package_rtbus_index.json" \
+            ARDUINO_PACKAGE_BASE_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG_NAME}"
 
           package_archive="dist/arduino/rtduo-${VERSION}.tar.gz"
           package_index="dist/arduino/package_rtbus_index.json"
@@ -94,7 +93,7 @@ jobs:
             --repo "${GITHUB_REPOSITORY}" \
             --target "${TARGET_COMMITISH}" \
             --title "RTBus ${VERSION}" \
-            --notes "RTBus Arduino package release ${VERSION}."
+            --notes "RTBus Arduino package release ${VERSION}. Platform source: https://github.com/${GITHUB_REPOSITORY}/tree/${TARGET_COMMITISH}. See SOURCE_INFO.md and THIRD_PARTY_NOTICES.md in the SDK for firmware provenance and upstream licenses."
 
       - name: Upload release assets
         env:
