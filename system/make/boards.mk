@@ -21,10 +21,10 @@ BOARD_PROFILE_PROMPT_GOALS := \
 	bootloader \
 	application \
 	application.clean \
-	jflash_erase \
-	jlink_rttlog \
-	jflash_write.runtime \
-	jflash_write.application
+	jlink.erase \
+	jlink.rttlog \
+	jlink.download.runtime \
+	jlink.download.application
 
 BOARD_PROFILE_REQUESTED := $(filter $(BOARD_PROFILE_PROMPT_GOALS),$(MAKECMDGOALS))
 

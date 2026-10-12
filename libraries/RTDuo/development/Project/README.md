@@ -5,7 +5,7 @@ sketch lives outside `examples/` and does not appear in the Arduino IDE examples
 menu. It is the default sketch for `make application`.
 
 Repository builds write directly to `Project/build/<BOARD>/`, for example
-`Project/build/RAK4631/`. `make jflash_write.application` uses the same directory.
+`Project/build/RAK4631/`. `make jlink.download.application` uses the same directory.
 `make application.clean` removes the selected board's output; `make arduino.clean`
 removes the selected sketch's entire build directory and local SDK staging.
 

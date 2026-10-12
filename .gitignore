@@ -3,6 +3,7 @@
 .agents/
 .codex/
 .west/
+.tmp/
 build*/
 !/cores/*/firmware/bootloader.hex
 !/cores/*/firmware/runtime.signed.hex
@@ -16,3 +17,4 @@ build*/
 *.d
 TODO.md
 project.*
+/*.sh

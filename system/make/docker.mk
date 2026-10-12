@@ -25,7 +25,7 @@ endif
 
 ZEPHYR_SDK_VERSION ?= 1.0.0
 ZEPHYR_VERSION ?= v4.4.0
-DOCKER_IMAGE ?= ghcr.io/hudec-iot/rtbus-zephyr:1.0.0
+DOCKER_IMAGE ?= ghcr.io/hudec-iot/rtbus-zephyr:1.0.1
 DOCKER_WORK ?= /workdir
 DOCKER_HOST_WORKDIR ?= $(CURDIR)
 docker_path = $(if $(filter /%,$(1)),$(1),$(DOCKER_WORK)/$(1))
