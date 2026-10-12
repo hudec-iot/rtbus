@@ -304,7 +304,7 @@ cores/<profile>/zephyr/bootloader.conf
 
 ## Package Layout
 
-Arduino IDE's **Tools > Burn Bootloader** uses the package-installed J-Link
+Arduino IDE's **Tools > Burn Bootloader** uses the locally installed J-Link
 client to connect to `127.0.0.1:19020` over SWD at 1000 kHz. Select the RTDuo
 board and **Tools > Programmer > J-Link Remote (RTBus Bootloader + Runtime)**.
 The operation checks both packaged images first, then writes
@@ -317,24 +317,19 @@ existing VS Code action.
 To override the remote server, add `tools.jlink.server=<address>:<port>` to
 `platform.local.txt` beside the installed `platform.txt`.
 
-Release CI includes the remote J-Link tool metadata without downloading or
-repacking the client. Set these variables on the public release repository:
+Windows J-Link is installed manually using SEGGER's official installer.
+It is not downloaded or unpacked by Boards Manager and is not a package
+index dependency. The Windows flashing helper queries `InstallPath` under
+`Software\SEGGER\J-Link` in the Windows registry, including version subkeys,
+current-user and machine installations, and both 32-bit and 64-bit views.
+It executes the registered installation's `JLink.exe` directly on Windows.
+No fixed installation version, Docker, Podman or WSL is required by the IDE
+flashing operation. If no usable registered installation is found, it reports
+that SEGGER's J-Link Software and Documentation Pack must be installed.
 
-| Variable | Value |
-|---|---|
-| `JLINK_WINDOWS_URL` | HTTPS URL of an Arduino-compatible Windows x86-64 ZIP |
-| `JLINK_WINDOWS_SHA256` | Archive SHA-256 |
-| `JLINK_WINDOWS_SIZE` | Archive size in bytes |
-| `JLINK_VERSION` | Tool version (default `9.70`) |
-| `JLINK_WINDOWS_ARCHIVE` | Archive filename (default `jlink-9.70-windows-x86_64.zip`) |
-
-The ZIP must unpack to one enclosing directory containing `JLink.exe`, its
-required DLLs and original license notices. A Windows `.exe` installer or a
-terms-acceptance HTML page cannot be used as this archive URL. CI requires the
-URL, checksum and size before publishing the new index. The metadata is added
-to `tools.systems` and `toolsDependencies`; installing the new RTDuo version
-in Boards Manager downloads the tool. Refreshing the index alone does not.
-This initial metadata entry targets Windows x86-64 IDE installations.
+The Windows client connects to the remote server over IP. USB driver setup
+belongs to the server host that has the physical probe attached. Container
+use continues to use `/opt/segger/jlink/JLinkExe` from the builder image.
 
 Release CI calls `make -C tools/scripts package` and fetches the published `package-index/package_rtbus_index.json`
 before generating the next index. It retains previous platform versions and

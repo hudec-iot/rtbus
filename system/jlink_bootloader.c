@@ -10,6 +10,71 @@
 #include <sys/wait.h>
 #endif
 
+#ifdef _WIN32
+static int registry_client(HKEY key, char *client, size_t capacity)
+{
+    char value[4096], directory[4096];
+    DWORD type = 0, bytes = sizeof(value);
+    size_t length;
+    int written;
+    DWORD attributes;
+    if (RegQueryValueExA(key, "InstallPath", NULL, &type,
+                         (BYTE *)value, &bytes) != ERROR_SUCCESS ||
+        (type != REG_SZ && type != REG_EXPAND_SZ) || !bytes ||
+        bytes > sizeof(value)) return 0;
+    value[sizeof(value) - 1] = 0;
+    if (type == REG_EXPAND_SZ) {
+        DWORD expanded = ExpandEnvironmentStringsA(value, directory, sizeof(directory));
+        if (!expanded || expanded > sizeof(directory)) return 0;
+    } else {
+        memcpy(directory, value, bytes);
+        directory[bytes - 1] = 0;
+    }
+    length = strlen(directory);
+    while (length && (directory[length - 1] == '\\' || directory[length - 1] == '/'))
+        directory[--length] = 0;
+    if (!length) return 0;
+    written = snprintf(client, capacity, "%s\\JLink.exe", directory);
+    if (written < 0 || (size_t)written >= capacity) return 0;
+    attributes = GetFileAttributesA(client);
+    return attributes != INVALID_FILE_ATTRIBUTES && !(attributes & FILE_ATTRIBUTE_DIRECTORY);
+}
+
+static int find_registered_client(char *client, size_t capacity)
+{
+    HKEY hives[] = { HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE };
+    REGSAM views[] = { KEY_WOW64_64KEY, KEY_WOW64_32KEY };
+    size_t hive, view;
+    for (hive = 0; hive < sizeof(hives) / sizeof(hives[0]); ++hive) {
+        for (view = 0; view < sizeof(views) / sizeof(views[0]); ++view) {
+            HKEY key;
+            DWORD index = 0;
+            if (RegOpenKeyExA(hives[hive], "Software\\SEGGER\\J-Link", 0,
+                              KEY_READ | views[view], &key) != ERROR_SUCCESS) continue;
+            if (registry_client(key, client, capacity)) { RegCloseKey(key); return 1; }
+            for (;;) {
+                char name[256];
+                DWORD length = sizeof(name);
+                HKEY version;
+                LONG status = RegEnumKeyExA(key, index++, name, &length,
+                                            NULL, NULL, NULL, NULL);
+                if (status == ERROR_NO_MORE_ITEMS) break;
+                if (status != ERROR_SUCCESS) break;
+                if (RegOpenKeyExA(key, name, 0, KEY_READ | views[view], &version)
+                    != ERROR_SUCCESS) continue;
+                if (registry_client(version, client, capacity)) {
+                    RegCloseKey(version); RegCloseKey(key); return 1;
+                }
+                RegCloseKey(version);
+            }
+            RegCloseKey(key);
+        }
+    }
+    fprintf(stderr, "No registered J-Link installation with JLink.exe found. Install SEGGER J-Link Software and Documentation Pack.\n");
+    return 0;
+}
+#endif
+
 static int readable(const char *path)
 {
     FILE *file = fopen(path, "rb");
@@ -94,6 +159,10 @@ static int run(char **args)
 int main(int argc, char **argv)
 {
     char script[4096];
+    char *client;
+#ifdef _WIN32
+    char registered_client[4096];
+#endif
     FILE *file;
     int result;
     char *args[] = { NULL, "-device", NULL, "-if", "SWD", "-speed", NULL,
@@ -103,7 +172,16 @@ int main(int argc, char **argv)
         fprintf(stderr, "Usage: jlink_bootloader <check|write> <client> <device> <ip:port> <speed-kHz> <bootloader.hex> <runtime.hex>\n");
         return 1;
     }
-    if (!readable(argv[2]) || !readable(argv[6]) || !readable(argv[7])) return 1;
+    client = argv[2];
+#ifdef _WIN32
+    if (!strcmp(client, "registry")) {
+        if (!find_registered_client(registered_client, sizeof(registered_client))) return 1;
+        client = registered_client;
+    }
+#endif
+    if (!readable(client) || !readable(argv[6]) || !readable(argv[7])) return 1;
+    printf("J-Link client: %s\n", client);
+    fflush(stdout);
     /* Arduino's erase phase validates everything without a whole-chip erase. */
     if (!strcmp(argv[1], "check")) return 0;
 #ifdef _WIN32
@@ -129,7 +207,7 @@ int main(int argc, char **argv)
     fputs("r\ng\nExit\n", file);
     if (fclose(file)) result = 0;
     if (result) {
-        args[0] = argv[2]; args[2] = argv[3];
+        args[0] = client; args[2] = argv[3];
         args[6] = argv[5]; args[8] = argv[4];
         result = run(args);
     } else result = 1;

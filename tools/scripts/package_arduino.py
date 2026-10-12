@@ -277,8 +277,7 @@ def parse_tool_specs(specs: list[list[str]]) -> list[ToolArchive]:
     return tools
 
 
-def tool_definitions(tools: list[ToolArchive], base_url: str,
-                     systems=DEFAULT_TOOL_SYSTEMS) -> list[dict[str, object]]:
+def tool_definitions(tools: list[ToolArchive], base_url: str) -> list[dict[str, object]]:
     grouped: dict[tuple[str, str], list[dict[str, str]]] = {}
 
     for tool in tools:
@@ -293,7 +292,7 @@ def tool_definitions(tools: list[ToolArchive], base_url: str,
             }
         )
 
-    for system in systems:
+    for system in DEFAULT_TOOL_SYSTEMS:
         grouped.setdefault((system.name, system.version), []).append(
             {
                 "host": system.host,
@@ -317,9 +316,8 @@ def tool_definitions(tools: list[ToolArchive], base_url: str,
     return definitions
 
 
-def tool_dependencies(tools: list[ToolArchive], packager: str,
-                      systems=DEFAULT_TOOL_SYSTEMS) -> list[dict[str, str]]:
-    seen = {(system.name, system.version) for system in systems}
+def tool_dependencies(tools: list[ToolArchive], packager: str) -> list[dict[str, str]]:
+    seen = {(system.name, system.version) for system in DEFAULT_TOOL_SYSTEMS}
     deps: list[dict[str, str]] = []
 
     for name, version in sorted(seen):
@@ -349,7 +347,6 @@ def build_index(
     boards: list[dict[str, str]],
     tools: list[ToolArchive],
     base_url: str,
-    tool_systems=DEFAULT_TOOL_SYSTEMS,
 ) -> dict[str, object]:
     platform: dict[str, object] = {
         "name": platform_name,
@@ -364,7 +361,7 @@ def build_index(
         "boards": boards,
     }
 
-    deps = tool_dependencies(tools, vendor, tool_systems)
+    deps = tool_dependencies(tools, vendor)
     if deps:
         platform["toolsDependencies"] = deps
 
@@ -377,7 +374,7 @@ def build_index(
                 "email": email,
                 "help": {"online": website_url},
                 "platforms": [platform],
-                "tools": tool_definitions(tools, base_url, tool_systems),
+                "tools": tool_definitions(tools, base_url),
             }
         ]
     }
@@ -461,23 +458,7 @@ def main() -> int:
             "Example: --tool-archive arm-zephyr-eabi 1.0.0 x86_64-pc-linux-gnu dist/arm-zephyr-eabi.tar.gz"
         ),
     )
-    parser.add_argument(
-        "--tool-system", action="append", nargs=7, default=[],
-        metavar=("NAME", "VERSION", "HOST", "URL", "ARCHIVE", "SHA256", "SIZE"),
-        help="Add remote tool metadata without downloading the archive; repeat per host.",
-    )
     args = parser.parse_args()
-    tool_systems = list(DEFAULT_TOOL_SYSTEMS)
-    for name, tool_version, host, url, archive, checksum, size in args.tool_system:
-        checksum = checksum.removeprefix("SHA-256:").lower()
-        if not url.startswith("https://") or not re.fullmatch(r"[0-9a-f]{64}", checksum):
-            parser.error("Remote tool requires an HTTPS URL and a SHA-256 checksum")
-        if not size.isdecimal() or int(size) <= 0:
-            parser.error("Remote tool size must be a positive byte count")
-        if not all((name, tool_version, host, archive)):
-            parser.error("Remote tool name, version, host and archive are required")
-        tool_systems.append(ToolSystem(name, tool_version, host, url, archive,
-                                       f"SHA-256:{checksum}", size))
 
     # Fetch/validate before packaging. Never replace history with a fresh index
     # when a requested source is unavailable or malformed.
@@ -526,7 +507,6 @@ def main() -> int:
         boards=parse_boards(REPO_ROOT / "boards.txt"),
         tools=tools,
         base_url=base_url,
-        tool_systems=tool_systems,
     )
 
     if previous is not None:

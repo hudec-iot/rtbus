@@ -56,18 +56,9 @@ jobs:
         env:
           TAG_NAME: ${{ steps.version.outputs.tag }}
           VERSION: ${{ steps.version.outputs.version }}
-          ARDUINO_JLINK_WINDOWS_URL: ${{ vars.JLINK_WINDOWS_URL }}
-          ARDUINO_JLINK_WINDOWS_SHA256: ${{ vars.JLINK_WINDOWS_SHA256 }}
-          ARDUINO_JLINK_WINDOWS_SIZE: ${{ vars.JLINK_WINDOWS_SIZE }}
-          ARDUINO_JLINK_VERSION: ${{ vars.JLINK_VERSION || '9.70' }}
-          ARDUINO_JLINK_WINDOWS_ARCHIVE: ${{ vars.JLINK_WINDOWS_ARCHIVE || 'jlink-9.70-windows-x86_64.zip' }}
         shell: bash
         run: |
           set -eu
-
-          : "${ARDUINO_JLINK_WINDOWS_URL:?Set JLINK_WINDOWS_URL to a portable Windows client archive URL}"
-          : "${ARDUINO_JLINK_WINDOWS_SHA256:?Set JLINK_WINDOWS_SHA256}"
-          : "${ARDUINO_JLINK_WINDOWS_SIZE:?Set JLINK_WINDOWS_SIZE in bytes}"
 
           make -C tools/scripts package \
             ARDUINO_RELEASE_VERSION="${VERSION}" \
