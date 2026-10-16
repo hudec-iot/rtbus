@@ -25,4 +25,4 @@ jobs:
         ls -la
         ls -la
         make board.profile BOARD_PROFILE=rak4631
-        make application bootloader runtime BOARD_PROFILE=rak4631
+        make application runtime BOARD_PROFILE=rak4631

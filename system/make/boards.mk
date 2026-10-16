@@ -18,7 +18,6 @@ ARDUINO_APPLICATION_JFLASH_HEX ?= $(ARDUINO_SKETCH_NAME).ino.signed.hex
 BOARD_PROFILE_PROMPT_GOALS := \
 	board.profile \
 	runtime \
-	bootloader \
 	application \
 	application.clean \
 	jlink.erase \
@@ -104,7 +103,4 @@ board.profile:
 	@printf 'RUNTIME_BOARD_DIR=%s\n' '$(RUNTIME_BOARD_DIR)'
 	@printf 'BOARD_RUNTIME_CONF=%s\n' '$(BOARD_RUNTIME_CONF)'
 	@printf 'BOARD_RUNTIME_OVERLAY=%s\n' '$(BOARD_RUNTIME_OVERLAY)'
-	@printf 'BOOTLOADER_BOARD_DIR=%s\n' '$(BOOTLOADER_BOARD_DIR)'
-	@printf 'BOARD_BOOTLOADER_CONF=%s\n' '$(BOARD_BOOTLOADER_CONF)'
-	@printf 'BOARD_BOOTLOADER_OVERLAY=%s\n' '$(BOARD_BOOTLOADER_OVERLAY)'
 	@printf 'ARDUINO_APPLICATION_BUILD_DIR=%s\n' '$(ARDUINO_APPLICATION_BUILD_DIR)'

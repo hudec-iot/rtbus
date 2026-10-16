@@ -3,6 +3,9 @@
  */
 
 #include "rtbus_image.h"
+#ifdef CONFIG_RTBUS_IMAGE_VERIFY_P256
+#include "rtbus_image_verify.h"
+#endif
 
 #include <errno.h>
 #include <string.h>
@@ -16,8 +19,7 @@
 
 LOG_MODULE_REGISTER(rtbus_image, LOG_LEVEL_INF);
 
-#define RTBUS_IMAGE_MAGIC 0x5746434dU /* WFCM */
-#define RTBUS_IMAGE_HEADER_VERSION 2U
+#define RTBUS_IMAGE_SIGNATURE_SIZE RTBUS_IMAGE_P256_SIGNATURE_SIZE
 #define RTBUS_IMAGE_SLOT_AREA_ID PARTITION_ID(component_slot_partition)
 #if DT_NODE_EXISTS(DT_NODELABEL(patch_partition))
 #define RTBUS_IMAGE_DIRECT_STORE_AREA_ID PARTITION_ID(patch_partition)
@@ -72,11 +74,11 @@ static int rtbus_image_open_direct_store(const struct flash_area **area)
 
 static size_t rtbus_image_payload_capacity(const struct flash_area *area)
 {
-    if (area->fa_size <= RTBUS_IMAGE_HEADER_SIZE) {
+    if (area->fa_size <= RTBUS_IMAGE_HEADER_SIZE + RTBUS_IMAGE_SIGNATURE_SIZE) {
         return 0U;
     }
 
-    return area->fa_size - RTBUS_IMAGE_HEADER_SIZE;
+    return area->fa_size - RTBUS_IMAGE_HEADER_SIZE - RTBUS_IMAGE_SIGNATURE_SIZE;
 }
 
 static void rtbus_image_store_reset(void)
@@ -120,6 +122,8 @@ static int rtbus_image_read_header_from_area(const struct flash_area *area,
 
     if (header->magic != RTBUS_IMAGE_MAGIC ||
         header->header_version != RTBUS_IMAGE_HEADER_VERSION ||
+        (header->flags & ~RTBUS_IMAGE_ABI_VERSION_MASK) !=
+            (RTBUS_IMAGE_FLAG_NATIVE | RTBUS_IMAGE_SIGNATURE_FLAGS) ||
         header->header_size != RTBUS_IMAGE_HEADER_SIZE ||
         header->payload_size == 0U ||
         header->payload_size > rtbus_image_payload_capacity(area)) {
@@ -138,9 +142,12 @@ static int rtbus_image_read_header_from_store(struct rtbus_image_header *header)
     if (rtbus_image_store_read(0, header, sizeof(*header)) != 0 ||
         header->magic != RTBUS_IMAGE_MAGIC ||
         header->header_version != RTBUS_IMAGE_HEADER_VERSION ||
+        (header->flags & ~RTBUS_IMAGE_ABI_VERSION_MASK) !=
+            (RTBUS_IMAGE_FLAG_NATIVE | RTBUS_IMAGE_SIGNATURE_FLAGS) ||
         header->header_size != RTBUS_IMAGE_HEADER_SIZE ||
         header->payload_size == 0U ||
-        header->payload_size > (store_ctx.expected_size - RTBUS_IMAGE_HEADER_SIZE)) {
+        header->payload_size != (store_ctx.expected_size - RTBUS_IMAGE_HEADER_SIZE -
+                                 RTBUS_IMAGE_SIGNATURE_SIZE)) {
         return -ENODATA;
     }
 
@@ -332,7 +339,7 @@ int rtbus_image_store_begin(const struct rtbus_image_store_info *info)
     const struct flash_area *area;
     int rc;
 
-    if (info == NULL || info->image_size < RTBUS_IMAGE_HEADER_SIZE) {
+    if (info == NULL || info->image_size <= RTBUS_IMAGE_HEADER_SIZE + RTBUS_IMAGE_SIGNATURE_SIZE) {
         return -EINVAL;
     }
 
@@ -464,6 +471,17 @@ int rtbus_image_store_finish(int status)
         goto out;
     }
 
+#ifdef CONFIG_RTBUS_IMAGE_VERIFY_P256
+    rc = rtbus_image_verify(store_ctx.flash_area,
+                            RTBUS_IMAGE_HEADER_SIZE + header.payload_size);
+    if (rc != 0) {
+        LOG_ERR("Application signature rejected (%d)", rc);
+        goto out;
+    }
+#else
+    rc = -ENOTSUP;
+    goto out;
+#endif
     rc = rtbus_image_commit_store_to_slot();
 
 out:
@@ -496,6 +514,13 @@ int rtbus_image_get_status(struct rtbus_image_status *status)
     }
 
     rc = rtbus_image_calculate_payload_crc(area, header.payload_size, &crc);
+#ifdef CONFIG_RTBUS_IMAGE_VERIFY_P256
+    if (rc == 0 && crc == header.payload_crc32) {
+        rc = rtbus_image_verify(area, RTBUS_IMAGE_HEADER_SIZE + header.payload_size);
+    }
+#else
+    rc = -ENOTSUP;
+#endif
     flash_area_close(area);
     if (rc != 0) {
         return rc;

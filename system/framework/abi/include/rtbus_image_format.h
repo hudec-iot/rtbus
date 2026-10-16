@@ -1,0 +1,38 @@
+/* SPDX-License-Identifier: MPL-2.0 */
+#ifndef RTBUS_IMAGE_FORMAT_H_
+#define RTBUS_IMAGE_FORMAT_H_
+
+#include <stdint.h>
+
+#define RTBUS_IMAGE_MAGIC 0x5746434dU
+#define RTBUS_IMAGE_HEADER_VERSION 4U
+#define RTBUS_IMAGE_HEADER_SIZE 128U
+#define RTBUS_IMAGE_PAYLOAD_SIZE_OFFSET 8U
+#define RTBUS_IMAGE_P256_SIGNATURE_SIZE 64U
+
+/* Version 4 flags, stored little-endian at header offset 100:
+ * bit 0: native; bit 1: signed; bits 8..15: signature algorithm;
+ * bits 16..23: signature length in 4-byte words; bits 24..31: native ABI.
+ * All other bits are reserved and must be zero.
+ */
+#define RTBUS_IMAGE_FLAG_NATIVE 0x00000001U
+#define RTBUS_IMAGE_FLAG_SIGNED 0x00000002U
+#define RTBUS_IMAGE_SIGNATURE_ALGORITHM_MASK 0x0000ff00U
+#define RTBUS_IMAGE_SIGNATURE_P256_SHA256 0x00000200U
+#define RTBUS_IMAGE_SIGNATURE_SIZE_MASK 0x00ff0000U
+#define RTBUS_IMAGE_SIGNATURE_SIZE_FLAGS \
+    ((RTBUS_IMAGE_P256_SIGNATURE_SIZE / 4U) << 16U)
+#define RTBUS_IMAGE_SIGNATURE_FLAGS \
+    (RTBUS_IMAGE_FLAG_SIGNED | RTBUS_IMAGE_SIGNATURE_P256_SHA256 | \
+     RTBUS_IMAGE_SIGNATURE_SIZE_FLAGS)
+#define RTBUS_IMAGE_ABI_VERSION_SHIFT 24U
+#define RTBUS_IMAGE_ABI_VERSION_MASK 0xff000000U
+#define RTBUS_IMAGE_FLAGS_MAKE_NATIVE_ABI(_version) \
+    (RTBUS_IMAGE_FLAG_NATIVE | \
+     (((uint32_t)(_version) << RTBUS_IMAGE_ABI_VERSION_SHIFT) & \
+      RTBUS_IMAGE_ABI_VERSION_MASK))
+#define RTBUS_IMAGE_FLAGS_ABI_VERSION(_flags) \
+    (((uint32_t)(_flags) & RTBUS_IMAGE_ABI_VERSION_MASK) >> \
+     RTBUS_IMAGE_ABI_VERSION_SHIFT)
+
+#endif

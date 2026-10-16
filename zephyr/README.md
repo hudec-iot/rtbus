@@ -17,6 +17,9 @@ the Zephyr board support comes from:
 - `BOARD_ROOTS`: optional Zephyr board root list. Project-owned boards should
   keep their board tree under the owning core's `zephyr/boards/` directory.
 
-Runtime, bootloader, profile, and project-owned Zephyr board files live under
+Runtime, profile, and project-owned Zephyr board files live under
 the owning `cores/<profile>` directory. The profile layer is the single place
 for board identity and source mapping.
+
+See [Application signing](application-signing.md) for P-256 application packaging,
+runtime verification, keys, and initial resource budgets.

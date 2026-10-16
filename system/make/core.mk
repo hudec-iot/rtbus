@@ -34,6 +34,7 @@ FRAMEWORK_DIR ?= $(SYSTEM_DIR)/framework
 ABI_INCLUDE ?= $(FRAMEWORK_DIR)/abi/include
 FRAMEWORK_INCLUDE ?= $(FRAMEWORK_DIR)/include
 PACK_SRC ?= $(SYSTEM_DIR)/header.c
+RTBUS_SIGNING_KEY ?= $(REPO_ROOT)/application-p256-private.key
 APPLICATION_VERSION ?= 0.1.0
 APPLICATION_BUILD ?= 0
 
@@ -82,7 +83,10 @@ SIGNED_BIN := $(BUILD_DIR)/$(MODULE).signed.bin
 SIGNED_HEX := $(BUILD_DIR)/$(MODULE).signed.hex
 SLOT_TXT := $(BUILD_DIR)/slot_address.txt
 
-.PHONY: all compile clean
+.PHONY: all compile clean application.pack
+
+# Repack even when only the signing key or signing policy changed.
+export RTBUS_SIGNING_KEY
 
 all: compile
 
@@ -92,7 +96,7 @@ compile: $(SIGNED_HEX)
 $(BUILD_DIR):
 	@mkdir -p $@
 
-$(PACKER): $(PACK_SRC) | $(BUILD_DIR)
+$(PACKER): $(PACK_SRC) $(ABI_INCLUDE)/rtbus_image_format.h $(wildcard $(SYSTEM_DIR)/crypto/*.[ch] $(SYSTEM_DIR)/crypto/micro-ecc/* $(SYSTEM_DIR)/crypto/sha256/*.[ch]) | $(BUILD_DIR)
 	$(HOST_CC) -x c -std=c99 -Wall -Wextra -Werror -O2 -o $@ $<
 
 $(OBJECT): $(SRC) | $(BUILD_DIR)
@@ -110,7 +114,7 @@ $(ELF): $(OBJECTS) $(LD_SCRIPT)
 $(BIN): $(ELF)
 	$(CP) -O binary $< $@
 
-$(SIGNED_HEX): $(BIN) $(ELF) $(PACKER)
+$(SIGNED_HEX): $(BIN) $(ELF) $(PACKER) application.pack
 	$(PACKER) true $(TARGET) $(BIN) $(PAYLOAD_BIN) $(MAP) $(SIGNED_BIN) $(SIGNED_HEX) $(SLOT_TXT) $(MODULE_NAME) $(APPLICATION_VERSION) $(APPLICATION_BUILD)
 
 clean:

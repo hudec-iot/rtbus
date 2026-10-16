@@ -66,10 +66,11 @@ future RTBus task event handling.
 
 - `cores/`, `variants/`, `libraries/`, `system/`: Arduino platform sources.
 - `zephyr/`: RTBus Zephyr runtime integration.
-- `zephyr/runtime/`: RTBus runtime firmware.
-- `zephyr/bootloader.mk`: MCUboot build wrapper.
-- `bootloader/mcuboot/`: west-provided MCUboot source.
-- `Makefile`: root entry for Arduino application, runtime, and bootloader builds.
+- `zephyr/runtime/`: directly bootable RTBus firmware at Flash offset zero.
+- Runtime uses `runtime.hex`; application `.signed` files carry the RTBus native
+  image header and are independent of MCUboot.
+- `bootloader/mcuboot/`: legacy west-provided source, unused by direct-boot runtime.
+- `Makefile`: root entry for Arduino application and runtime builds.
 - `system/make/`: shared project build fragments.
 - `tools/docker/`, `tools/scripts/`: host-side container and packaging tools.
 - `tools/scripts/Makefile`: standalone release archive/index generation for
@@ -88,7 +89,7 @@ future RTBus task event handling.
 - `bootloader/`, `modules/`: upstream or vendored platform pieces.
 - `.arduino/package/`: local Arduino SDK staging.
 - `<sketch>/build/<BOARD>/`: Arduino application build output.
-- `cores/<profile>/firmware/build.*/`: runtime and bootloader build output.
+- `cores/<profile>/firmware/build.*/`: runtime build output.
 - `cores/<profile>/build/`: standalone native application build output.
 
 ## Active Board Profiles
@@ -118,7 +119,7 @@ make -C tools/docker build
 
 `tools/docker/Makefile` owns image building only; GitHub Actions owns publishing.
 `tools/docker/docker.mk` owns shared container execution settings and pulls
-missing images for application, runtime, and bootloader builds.
+missing images for application and runtime builds.
 
 List Arduino boards:
 
@@ -132,11 +133,10 @@ Compile the default Arduino sketch:
 make application BOARD_PROFILE=rak4631
 ```
 
-Build Zephyr runtime and bootloader:
+Build the directly bootable Zephyr runtime:
 
 ```sh
 make runtime BOARD_PROFILE=rak4631
-make bootloader BOARD_PROFILE=rak4631
 ```
 
 Build a standalone native C application through its core entry:
@@ -207,5 +207,5 @@ If build output is needed, artifacts are exported under:
 
 ```text
 cores/<profile>/firmware/build.runtime/
-cores/<profile>/firmware/runtime.signed.hex
+cores/<profile>/firmware/runtime.hex
 ```

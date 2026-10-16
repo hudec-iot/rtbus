@@ -1,12 +1,12 @@
 .arduino/
+.project/
 .cache/
 .agents/
 .codex/
 .west/
 .tmp/
 build*/
-!/cores/*/firmware/bootloader.hex
-!/cores/*/firmware/runtime.signed.hex
+!/cores/*/firmware/runtime.hex
 *.elf
 *.hex
 *.bin

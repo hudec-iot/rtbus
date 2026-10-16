@@ -124,7 +124,7 @@ are defined by `system/make/boards.mk`:
 - `rak4200`
 
 Each profile owns its board mapping in `cores/<profile>/profile.mk`, and its
-runtime or bootloader Zephyr settings under `cores/<profile>/zephyr/`.
+runtime Zephyr settings under `cores/<profile>/zephyr/`.
 
 Useful inspection command:
 
@@ -172,11 +172,10 @@ make application \
   ARDUINO_SKETCH=libraries/RTDuo/examples/HelloWorld
 ```
 
-Build the Zephyr runtime and bootloader:
+Build the directly bootable Zephyr runtime:
 
 ```sh
 make runtime BOARD_PROFILE=rak4631
-make bootloader BOARD_PROFILE=rak4631
 ```
 
 Build a standalone native C application from its core directory:
@@ -208,27 +207,31 @@ root GCC backend selector.
 `arduino-cli.yaml` configures the repository-local Arduino data, downloads,
 and package directories used by the root Arduino commands.
 
-Runtime and bootloader builds are exported under:
+Runtime builds are exported under `cores/<profile>/firmware/build.runtime/`.
+Successful builds copy `zephyr/zephyr.hex` to
+`cores/<profile>/firmware/runtime.hex` for SDK distribution and J-Link flashing.
+The runtime boots directly from Flash offset zero; MCUboot, its image header,
+secondary image slot and scratch partition are no longer used.
 
-```text
-cores/<profile>/firmware/build.runtime/
-cores/<profile>/firmware/build.bootloader/
-```
+Flash offsets are relative to the MCU Flash base (`0x00000000` on RAK4631,
+`0x08000000` on the STM32 profiles):
 
-For each board profile, successful bootloader and runtime builds also export the SDK
-firmware images to:
+| Profile | Runtime offset / size | Application offset / size | Settings offset / size |
+|---|---|---|---|
+| RAK4631 | `0x00000 / 0xEC000` | `0xEC000 / 0xA000` | `0xF8000 / 0x8000` |
+| RAK3172P/T | `0x00000 / 0x31000` | `0x31000 / 0xA000` | `0x3B000 / 0x5000` |
+| RAK4200 | `0x00000 / 0x18000` | `0x18000 / 0x4000` | `0x1C000 / 0x4000` |
 
-```text
-cores/<profile>/firmware/bootloader.hex
-cores/<profile>/firmware/runtime.signed.hex
-```
+RAK4631 leaves the former 8 KiB scratch region at `0xF6000` unallocated.
+Application and settings addresses are preserved. Application `.signed.bin`
+and `.signed.hex` are RTBus-header-packed images, independent of MCUboot;
+they retain their required native image header.
 
-These two files can be committed and pushed with the SDK sources. The Arduino
-package includes them when it copies `cores/`; package creation does not build
-firmware. Full build and diagnostic artifacts live in the firmware directory's
-`build.runtime/` and `build.bootloader/` subdirectories, which are ignored by
-Git and excluded from Arduino packages. J-Link flashing uses the two top-level
-HEX images. Cleaning runtime build output preserves the SDK images.
+Rebuild runtime before flashing or releasing this layout. An old MCUboot
+runtime cannot be made directly bootable just by renaming its HEX file.
+Arduino staging and release archives exclude legacy `bootloader.hex` and
+`runtime.signed.hex`; package creation does not build new firmware.
+Cleaning runtime build output preserves the new SDK image.
 
 Generated Arduino and Zephyr build outputs are ignored by git.
 
@@ -299,17 +302,16 @@ Per-profile settings live in:
 
 ```text
 cores/<profile>/zephyr/runtime.conf
-cores/<profile>/zephyr/bootloader.conf
 ```
 
 ## Package Layout
 
 Arduino IDE's **Tools > Burn Bootloader** uses the locally installed J-Link
 client to connect to `127.0.0.1:19020` over SWD at 1000 kHz. Select the RTDuo
-board and **Tools > Programmer > J-Link Remote (RTBus Bootloader + Runtime)**.
-The operation checks both packaged images first, then writes
-`cores/<profile>/firmware/bootloader.hex` and `runtime.signed.hex` in one
-session before resetting and starting the board. The IDE erase phase only
+board and **Tools > Programmer > J-Link Remote (RTBus Runtime)**.
+The operation checks and writes only
+`cores/<profile>/firmware/runtime.hex`, then resets and starts the board.
+The IDE menu still says Burn Bootloader, but installs the directly bootable runtime. The IDE erase phase only
 checks the files; it does not erase the entire chip. RAK4200 needs its firmware
 images supplied before this operation can be used. RAK11720 retains its
 existing VS Code action.

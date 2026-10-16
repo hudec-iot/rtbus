@@ -12,6 +12,8 @@ This inventory identifies dependencies, not a complete binary license audit.
 | Zephyr SDK / arm-zephyr-eabi | Builder and separately distributed Windows toolchain ZIP | Mixed licenses for GCC, binutils, libraries and other components; do not label the entire SDK MPL. https://github.com/zephyrproject-rtos/sdk-ng |
 | Arduino CLI | Builder; `ARDUINO_CLI_VERSION` (default 1.5.1) | GPLv3; retain the license and corresponding source/build information. https://github.com/arduino/arduino-cli/blob/master/LICENSE.txt |
 | TinyCC / TCC | Builder OS package and external Windows ZIP | LGPL licensing with component-specific exceptions/notices; use the exact distribution's COPYING and source. https://github.com/TinyCC/tinycc/blob/mob/COPYING |
+| micro-ecc | Host P-256 signing; vendored revision and changes in `system/crypto/README.md` | BSD-2-Clause; `system/crypto/micro-ecc/LICENSE.txt`; https://github.com/kmackay/micro-ecc |
+| Brad Conte SHA-256 | Host SHA-256; source hashes and changes in `system/crypto/README.md` | Public domain per upstream README; https://github.com/B-Con/crypto-algorithms |
 | GitHub CLI | Builder OS package | MIT for the project, plus dependency notices. https://github.com/cli/cli |
 | embeddedcontainers Zephyr image | Builder base; `ZEPHYR_BASE_IMAGE` | A collection of software under individual licenses. Retain base-image notices and record its digest. https://github.com/embeddedcontainers |
 | Linux OS packages and Python dependencies | Builder; Dockerfile install lists | Package-specific licenses and transitive dependencies. Preserve installed notices and corresponding-source mechanisms where applicable. |

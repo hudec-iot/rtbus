@@ -43,4 +43,5 @@ arduino.clean:
 arduino.package.local:
 	rm -rf $(ARDUINO_PACKAGE_DIR)
 	mkdir -p $(ARDUINO_PACKAGE_DIR)
-	tar --exclude='build' --exclude='build.*' -cf - cores variants libraries system boards.txt platform.txt programmers.txt LICENSE NOTICE SOURCE_INFO.md THIRD_PARTY_NOTICES.md | tar -xf - -C $(ARDUINO_PACKAGE_DIR)
+	tar --exclude='build' --exclude='build.*' --exclude='bootloader.hex' --exclude='runtime.signed.hex' -cf - cores variants libraries system application-p256-private.key application-p256-public.pub boards.txt platform.txt programmers.txt LICENSE NOTICE SOURCE_INFO.md THIRD_PARTY_NOTICES.md | tar -xf - -C $(ARDUINO_PACKAGE_DIR)
+	cp zephyr/application-signing.md "$(ARDUINO_PACKAGE_DIR)/APPLICATION_SIGNING.md"

@@ -62,6 +62,7 @@ config RTBUS_RUNTIME_TIMEOUT_MAX_MS
 
 config RTBUS_RUNTIME_THREAD_STACK_SIZE
     int "RTBus runtime thread stack size"
+    default 4096 if RTBUS_IMAGE_VERIFY_P256
     default 1024
     range 512 8192
     depends on RTBUS_NATIVE_SERVICE
@@ -108,6 +109,24 @@ config RTBUS_IMAGE_FLASH_PENDING_MAX
       RAM to reduce flash write calls, or decrease it on constrained profiles.
       The value must be at least the flash write alignment and must be an exact
       multiple of that alignment.
+
+config RTBUS_IMAGE_VERIFY_P256
+    bool "Require ECDSA P-256 signed application images"
+    depends on RTBUS_NATIVE_SERVICE
+    depends on PSA_CRYPTO
+    depends on PSA_WANT_ALG_SHA_256
+    depends on PSA_WANT_ALG_ECDSA
+    depends on PSA_WANT_ECC_SECP_R1_256
+    depends on PSA_WANT_KEY_TYPE_ECC_PUBLIC_KEY
+    default n
+    help
+      Verify SHA-256/ECDSA P-256 signatures before committing an update
+      and before loading an application. Require the current signed image format.
+      Supply RTBUS_IMAGE_PUBLIC_KEY_FILE as a CMake argument, pointing to a
+      65-byte SEC1 uncompressed P-256 public key. No private key belongs in the runtime.
+      Enable the PSA provider and algorithms in the runtime configuration
+      (see app-p256.conf), rather than selecting them from this service.
+
 
 config RTBUS_YMODEM_FLASH_STORE
     bool "Store YMODEM DFU payloads to flash"

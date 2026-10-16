@@ -93,7 +93,7 @@ jobs:
             --repo "${GITHUB_REPOSITORY}" \
             --target "${TARGET_COMMITISH}" \
             --title "RTBus ${VERSION}" \
-            --notes "RTBus Arduino package release ${VERSION}. Platform source: https://github.com/${GITHUB_REPOSITORY}/tree/${TARGET_COMMITISH}. See SOURCE_INFO.md and THIRD_PARTY_NOTICES.md in the SDK for firmware provenance and upstream licenses."
+            --notes "RTBus Arduino package release ${VERSION}. Platform source: https://github.com/${GITHUB_REPOSITORY}/tree/${TARGET_COMMITISH}. See APPLICATION_SIGNING.md in the SDK for P-256 reference keys and application signing. See SOURCE_INFO.md and THIRD_PARTY_NOTICES.md for firmware provenance and upstream licenses."
 
       - name: Upload release assets
         env:

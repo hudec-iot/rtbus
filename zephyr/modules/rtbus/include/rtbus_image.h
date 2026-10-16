@@ -15,18 +15,7 @@ extern "C" {
 
 #define RTBUS_IMAGE_NAME_MAX 64U
 #define RTBUS_IMAGE_VERSION_MAX 16U
-#define RTBUS_IMAGE_HEADER_SIZE 128U
-#define RTBUS_IMAGE_PAYLOAD_SIZE_OFFSET 8U
-#define RTBUS_IMAGE_FLAG_NATIVE 0x00000001U
-#define RTBUS_IMAGE_ABI_VERSION_SHIFT 24U
-#define RTBUS_IMAGE_ABI_VERSION_MASK 0xff000000U
-#define RTBUS_IMAGE_FLAGS_MAKE_NATIVE_ABI(_version) \
-    (RTBUS_IMAGE_FLAG_NATIVE | \
-     (((uint32_t)(_version) << RTBUS_IMAGE_ABI_VERSION_SHIFT) & \
-      RTBUS_IMAGE_ABI_VERSION_MASK))
-#define RTBUS_IMAGE_FLAGS_ABI_VERSION(_flags) \
-    (((uint32_t)(_flags) & RTBUS_IMAGE_ABI_VERSION_MASK) >> \
-     RTBUS_IMAGE_ABI_VERSION_SHIFT)
+#include <rtbus_image_format.h>
 
 struct rtbus_image_native_metadata {
     uint32_t entry_offset;

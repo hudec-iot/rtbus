@@ -13,5 +13,4 @@ include system/make/ci.mk
 
 
 include zephyr/runtime/runtime.mk
-include zephyr/bootloader.mk
 

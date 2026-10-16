@@ -30,6 +30,7 @@ build.application.pack=true
 build.application.name=application
 build.application.version=0.1.0
 build.application.build=0
+build.application.signing.key={runtime.platform.path}/application-p256-private.key
 build.application.export.path={build.source.path}/build/{build.board}
 tools.application_pack.header.path={runtime.platform.path}/system/header.c
 tools.jlink.cmd.path={runtime.tools.tcc.path}/bin/tcc
@@ -40,14 +41,13 @@ tools.jlink.client.path=/opt/segger/jlink/JLinkExe
 tools.jlink.client.path.windows=registry
 tools.jlink.server=127.0.0.1:19020
 tools.jlink.speed=1000
-tools.jlink.bootloader.image={runtime.platform.path}/cores/{build.core}/firmware/bootloader.hex
-tools.jlink.runtime.image={runtime.platform.path}/cores/{build.core}/firmware/runtime.signed.hex
+tools.jlink.runtime.image={runtime.platform.path}/cores/{build.core}/firmware/runtime.hex
 tools.jlink.erase.params.quiet=
 tools.jlink.erase.params.verbose=
-tools.jlink.erase.pattern="{cmd.path}" {flags} -x c -std=c99 -Wall -Wextra -Werror -O2 -run "{runtime.platform.path}/system/jlink_bootloader.c" check "{client.path}" "{build.jlink.device}" "{server}" "{speed}" "{bootloader.image}" "{runtime.image}"
+tools.jlink.erase.pattern="{cmd.path}" {flags} -x c -std=c99 -Wall -Wextra -Werror -O2 -run "{runtime.platform.path}/system/jlink_runtime.c" check "{client.path}" "{build.jlink.device}" "{server}" "{speed}" "{runtime.image}"
 tools.jlink.bootloader.params.quiet=
 tools.jlink.bootloader.params.verbose=
-tools.jlink.bootloader.pattern="{cmd.path}" {flags} -x c -std=c99 -Wall -Wextra -Werror -O2 -run "{runtime.platform.path}/system/jlink_bootloader.c" write "{client.path}" "{build.jlink.device}" "{server}" "{speed}" "{bootloader.image}" "{runtime.image}"
+tools.jlink.bootloader.pattern="{cmd.path}" {flags} -x c -std=c99 -Wall -Wextra -Werror -O2 -run "{runtime.platform.path}/system/jlink_runtime.c" write "{client.path}" "{build.jlink.device}" "{server}" "{speed}" "{runtime.image}"
 tools.ymodem_upload.cmd.path={runtime.tools.tcc.path}/bin/tcc
 tools.ymodem_upload.cmd.path.windows={runtime.tools.tcc.path}/tcc.exe
 tools.ymodem_upload.cmd.path.linux={runtime.tools.tcc.path}/bin/tcc
@@ -90,4 +90,4 @@ recipe.size.regex=^(?:\.text|\.rodata|\.data)\s+([0-9]+).*
 recipe.size.regex.data=^(?:\.data|\.bss)\s+([0-9]+).*
 
 recipe.hooks.objcopy.postobjcopy.1.pattern="{compiler.host.path}{compiler.host.cmd}" {compiler.host.flags} -x c -std=c99 -Wall -Wextra -Werror -O2 -o "{build.path}/application_pack.exe" "{tools.application_pack.header.path}"
-recipe.hooks.objcopy.postobjcopy.2.pattern="{build.path}/application_pack.exe" "{build.application.pack}" "{build.project_name}" "{build.path}/{build.project_name}.bin" "{build.path}/{build.project_name}.payload.bin" "{build.path}/{build.project_name}.map" "{build.path}/{build.project_name}.signed.bin" "{build.path}/{build.project_name}.signed.hex" "{build.path}/slot_address.txt" "{build.application.name}" "{build.application.version}" "{build.application.build}" "{build.path}/{build.project_name}.hex" "{build.path}/{build.project_name}.elf" "{build.application.export.path}"
+recipe.hooks.objcopy.postobjcopy.2.pattern="{build.path}/application_pack.exe" "{build.application.pack}" "{build.project_name}" "{build.path}/{build.project_name}.bin" "{build.path}/{build.project_name}.payload.bin" "{build.path}/{build.project_name}.map" "{build.path}/{build.project_name}.signed.bin" "{build.path}/{build.project_name}.signed.hex" "{build.path}/slot_address.txt" "{build.application.name}" "{build.application.version}" "{build.application.build}" "{build.path}/{build.project_name}.hex" "{build.path}/{build.project_name}.elf" "{build.application.export.path}" "--signing-key={build.application.signing.key}"

@@ -1,10 +1,11 @@
 # SPDX-License-Identifier: MPL-2.0
 RUNTIME_APP_DIR := zephyr/runtime
+RTBUS_IMAGE_PUBLIC_KEY_FILE ?= application-p256-public.pub
 RUNTIME_BOARD_DIR ?= cores/$(BOARD_PROFILE)/zephyr
 BOARD_RUNTIME_CONF ?= $(RUNTIME_BOARD_DIR)/runtime.conf
 BOARD_RUNTIME_OVERLAY ?= $(RUNTIME_BOARD_DIR)/runtime.overlay
 RUNTIME_BUILD_DIR ?= cores/$(BOARD_PROFILE)/firmware/build.runtime
-RUNTIME_PACKAGE_IMAGE ?= cores/$(BOARD_PROFILE)/firmware/runtime.signed.hex
+RUNTIME_PACKAGE_IMAGE ?= cores/$(BOARD_PROFILE)/firmware/runtime.hex
 RUNTIME_CONTAINER_BUILD_DIR ?= $(RTBUS_CONTAINER_BUILD_ROOT)/runtime/$(BOARD_PROFILE)
 
 RUNTIME_ZEPHYR_MODULES := $(strip $(RTBUS_ZEPHYR_MODULES))
@@ -16,6 +17,9 @@ endif
 ifneq ($(strip $(RTBUS_EXTRA_CONF)),)
 RUNTIME_EXTRA_CONF_FILE := $(RUNTIME_EXTRA_CONF_FILE)$(if $(strip $(RUNTIME_EXTRA_CONF_FILE)),;,)$(RTBUS_EXTRA_CONF)
 endif
+ifneq ($(strip $(RTBUS_IMAGE_PUBLIC_KEY_FILE)),)
+RUNTIME_EXTRA_CONF_FILE := $(RUNTIME_EXTRA_CONF_FILE);$(DOCKER_WORK)/$(RUNTIME_APP_DIR)/app-p256.conf
+endif
 
 RUNTIME_DTC_OVERLAY_FILE :=
 ifneq ($(strip $(BOARD_RUNTIME_OVERLAY)),)
@@ -26,6 +30,9 @@ RUNTIME_DTC_OVERLAY_FILE := $(RUNTIME_DTC_OVERLAY_FILE)$(if $(strip $(RUNTIME_DT
 endif
 
 RUNTIME_BOARD_ARGS := -DEXTRA_CONF_FILE="$(RUNTIME_EXTRA_CONF_FILE)"
+ifneq ($(strip $(RTBUS_IMAGE_PUBLIC_KEY_FILE)),)
+RUNTIME_BOARD_ARGS += -DRTBUS_IMAGE_PUBLIC_KEY_FILE="$(call docker_path,$(RTBUS_IMAGE_PUBLIC_KEY_FILE))"
+endif
 ifneq ($(strip $(RUNTIME_DTC_OVERLAY_FILE)),)
 RUNTIME_BOARD_ARGS += -DDTC_OVERLAY_FILE="$(RUNTIME_DTC_OVERLAY_FILE)"
 endif
@@ -45,9 +52,9 @@ runtime: zephyr.workspace
 	$(DOCKER_RUN) sh -ec 'rm -rf "$(RUNTIME_CONTAINER_BUILD_DIR)" "$(DOCKER_WORK)/$(RUNTIME_BUILD_DIR)"; cd "$(RTBUS_ZEPHYR_WORKSPACE)" && west build -b "$(ZEPHYR_BOARD)" -d "$(RUNTIME_CONTAINER_BUILD_DIR)" -s "$(DOCKER_WORK)/$(RUNTIME_APP_DIR)" -- -DCMAKE_EXPORT_COMPILE_COMMANDS=ON $(RUNTIME_BOARD_ARGS); mkdir -p "$$(dirname "$(DOCKER_WORK)/$(RUNTIME_BUILD_DIR)")"; cp -a "$(RUNTIME_CONTAINER_BUILD_DIR)" "$(DOCKER_WORK)/$(RUNTIME_BUILD_DIR)"; echo "Runtime build exported: $(DOCKER_WORK)/$(RUNTIME_BUILD_DIR)"'
 
 ifneq ($(strip $(RUNTIME_PACKAGE_IMAGE)),)
-	@test -s "$(RUNTIME_BUILD_DIR)/zephyr/zephyr.signed.hex" || { echo "Missing signed runtime HEX: $(RUNTIME_BUILD_DIR)/zephyr/zephyr.signed.hex" >&2; exit 1; }
+	@test -s "$(RUNTIME_BUILD_DIR)/zephyr/zephyr.hex" || { echo "Missing runtime HEX: $(RUNTIME_BUILD_DIR)/zephyr/zephyr.hex" >&2; exit 1; }
 	mkdir -p "$(dir $(RUNTIME_PACKAGE_IMAGE))"
-	cp "$(RUNTIME_BUILD_DIR)/zephyr/zephyr.signed.hex" "$(RUNTIME_PACKAGE_IMAGE)"
+	cp "$(RUNTIME_BUILD_DIR)/zephyr/zephyr.hex" "$(RUNTIME_PACKAGE_IMAGE)"
 endif
 
 .PHONY: runtime.clean

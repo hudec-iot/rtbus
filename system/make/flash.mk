@@ -26,9 +26,8 @@ jlink.rttlog: docker.image
 
 .PHONY: jlink.download.runtime
 jlink.download.runtime: docker.image
-	@test -s "$(dir $(RUNTIME_PACKAGE_IMAGE))$(RUNTIME_JFLASH_HEX)" || { echo "Missing runtime HEX. Rebuild runtime and ensure MCUboot image generation is enabled." >&2; exit 1; }
-	@test -s "$(dir $(BOOTLOADER_PACKAGE_IMAGE))$(BOOTLOADER_JFLASH_HEX)" || { echo "Missing bootloader HEX. Rebuild bootloader." >&2; exit 1; }
-	$(call jlink_run,"r" "h" "loadfile \"$(call docker_path,$(dir $(RUNTIME_PACKAGE_IMAGE))$(RUNTIME_JFLASH_HEX))\"" "loadfile \"$(call docker_path,$(dir $(BOOTLOADER_PACKAGE_IMAGE))$(BOOTLOADER_JFLASH_HEX))\"" "r" "g")
+	@test -s "$(dir $(RUNTIME_PACKAGE_IMAGE))$(RUNTIME_JFLASH_HEX)" || { echo "Missing runtime HEX. Rebuild runtime." >&2; exit 1; }
+	$(call jlink_run,"r" "h" "loadfile \"$(call docker_path,$(dir $(RUNTIME_PACKAGE_IMAGE))$(RUNTIME_JFLASH_HEX))\"" "r" "g")
 	@echo "current time: $$(date +'%Y-%m-%d %H:%M:%S')"
 
 .PHONY: jlink.download.application

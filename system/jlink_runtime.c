@@ -168,8 +168,8 @@ int main(int argc, char **argv)
     char *args[] = { NULL, "-device", NULL, "-if", "SWD", "-speed", NULL,
                     "-IP", NULL, "-AutoConnect", "1", "-NoGui", "1",
                     "-ExitOnError", "1", "-CommanderScript", script, NULL };
-    if (argc != 8 || (strcmp(argv[1], "check") && strcmp(argv[1], "write"))) {
-        fprintf(stderr, "Usage: jlink_bootloader <check|write> <client> <device> <ip:port> <speed-kHz> <bootloader.hex> <runtime.hex>\n");
+    if (argc != 7 || (strcmp(argv[1], "check") && strcmp(argv[1], "write"))) {
+        fprintf(stderr, "Usage: jlink_runtime <check|write> <client> <device> <ip:port> <speed-kHz> <runtime.hex>\n");
         return 1;
     }
     client = argv[2];
@@ -179,7 +179,7 @@ int main(int argc, char **argv)
         client = registered_client;
     }
 #endif
-    if (!readable(client) || !readable(argv[6]) || !readable(argv[7])) return 1;
+    if (!readable(client) || !readable(argv[6])) return 1;
     printf("J-Link client: %s\n", client);
     fflush(stdout);
     /* Arduino's erase phase validates everything without a whole-chip erase. */
@@ -203,7 +203,7 @@ int main(int argc, char **argv)
 #endif
     if (!file) { remove(script); return 1; }
     fputs("ExitOnError 1\nr\nh\n", file);
-    result = loadfile(file, argv[6]) && loadfile(file, argv[7]);
+    result = loadfile(file, argv[6]);
     fputs("r\ng\nExit\n", file);
     if (fclose(file)) result = 0;
     if (result) {

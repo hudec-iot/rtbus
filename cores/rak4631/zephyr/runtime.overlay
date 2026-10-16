@@ -6,7 +6,7 @@
         /delete-property/ zephyr,shell-uart;
         rtbus,application-serial = &cdc_acm_uart0;
         rtbus,application-serial1 = &uart1;
-        zephyr,code-partition = &slot0_partition;
+        zephyr,code-partition = &runtime_partition;
         zephyr,settings-partition = &storage_partition;
     };
 
@@ -121,47 +121,28 @@
 };
 
 &flash0 {
+	/delete-node/ partitions;
 	partitions {
-		ranges;
+		compatible = "fixed-partitions";
 		#address-cells = <1>;
 		#size-cells = <1>;
-		/delete-node/ partition@c000;
-		/delete-node/ partition@82000;
 
-		boot_partition: partition@0 {
+		runtime_partition: partition@0 {
 			compatible = "zephyr,mapped-partition";
-			label = "mcuboot";
-			reg = <0x00000000 0x00010000>; /* 64 KB */
+			label = "runtime";
+			reg = <0x00000000 0x000ec000>;
 		};
 
-		slot0_partition: partition@10000 {
-			compatible = "zephyr,mapped-partition";
-			label = "image-0";
-			reg = <0x00010000 0x0006E000>; /* 448 KB */
-		};
-
-		slot1_partition: partition@7E000 {
-			compatible = "zephyr,mapped-partition";
-			label = "image-1";
-			reg = <0x0007E000 0x0006E000>; /* 448 KB */
-		};
-
-		component_slot_partition: partition@EC000 {
+		component_slot_partition: partition@ec000 {
 			compatible = "zephyr,mapped-partition";
 			label = "component_slot";
-			reg = <0x000EC000 0x0000A000>; /* 40 KB */
+			reg = <0x000ec000 0x0000a000>;
 		};
 
-		scratch_partition: partition@F6000 {
-			compatible = "zephyr,mapped-partition";
-			label = "scratch";
-			reg = <0x000F6000 0x00002000>; /* 8 KB */
-		};
-
-		storage_partition: partition@F8000 {
+		storage_partition: partition@f8000 {
 			compatible = "zephyr,mapped-partition";
 			label = "storage";
-			reg = <0x000F8000 0x00008000>; /* 32 KB */
+			reg = <0x000f8000 0x00008000>;
 		};
 	};
 };

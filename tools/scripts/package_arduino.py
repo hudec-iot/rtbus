@@ -25,6 +25,8 @@ PLATFORM_FILES = (
     "variants",
     "libraries",
     "system",
+    "application-p256-private.key",
+    "application-p256-public.pub",
     "boards.txt",
     "platform.txt",
     "programmers.txt",
@@ -189,7 +191,7 @@ def copy_platform_tree(destination: Path) -> None:
 
         if source.is_dir():
             shutil.copytree(source, target, symlinks=False,
-                            ignore=shutil.ignore_patterns("build", "build.*"))
+                            ignore=shutil.ignore_patterns("build", "build.*", "bootloader.hex", "runtime.signed.hex"))
         else:
             shutil.copy2(source, target)
 
@@ -198,6 +200,9 @@ def copy_platform_tree(destination: Path) -> None:
         if not source.is_file():
             raise FileNotFoundError(f"Required distribution notice missing: {source}")
         shutil.copy2(source, destination / required)
+
+    shutil.copy2(REPO_ROOT / "zephyr/application-signing.md",
+                 destination / "APPLICATION_SIGNING.md")
 
     for optional in ("README.md",):
         source = REPO_ROOT / optional

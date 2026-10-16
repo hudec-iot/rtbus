@@ -15,16 +15,14 @@
 
 #include "framework/abi/include/runtime_api_slots.h"
 
-#define COMPONENT_MAGIC 0x5746434dU
-#define HEADER_VERSION 2U
-#define HEADER_SIZE 128U
-#define RTBUS_IMAGE_FLAG_NATIVE 0x00000001U
-#define RTBUS_IMAGE_ABI_VERSION_SHIFT 24U
-#define RTBUS_IMAGE_ABI_VERSION_MASK 0xff000000U
-#define RTBUS_IMAGE_FLAGS_MAKE_NATIVE_ABI(_version) \
-    (RTBUS_IMAGE_FLAG_NATIVE | \
-     (((uint32_t)(_version) << RTBUS_IMAGE_ABI_VERSION_SHIFT) & \
-      RTBUS_IMAGE_ABI_VERSION_MASK))
+#include "framework/abi/include/rtbus_image_format.h"
+
+#define COMPONENT_MAGIC RTBUS_IMAGE_MAGIC
+#define HEADER_VERSION RTBUS_IMAGE_HEADER_VERSION
+#define HEADER_SIZE RTBUS_IMAGE_HEADER_SIZE
+#define SIGNATURE_SIZE RTBUS_IMAGE_P256_SIGNATURE_SIZE
+
+#include "crypto/signing.c"
 #define IHEX_RECORD_DATA 0x00U
 #define IHEX_RECORD_EOF 0x01U
 #define IHEX_RECORD_EXT_LINEAR_ADDR 0x04U
@@ -34,6 +32,7 @@
 struct application_symbols {
     uint32_t slot_start;
     uint32_t flash_start;
+    uint32_t flash_end;
     uint32_t entry;
     uint32_t data_load;
     uint32_t data_start;
@@ -379,13 +378,14 @@ static int write_ihex_record(FILE *fp, uint8_t type, uint16_t address,
 
 static int write_component_ihex(const char *path, uint32_t base_addr,
                                 const uint8_t *header, const uint8_t *payload,
-                                size_t payload_size)
+                                size_t payload_size, const uint8_t *signature,
+                                size_t signature_size)
 {
     FILE *fp = fopen(path, "w");
     uint32_t address = base_addr;
     uint32_t current_upper = UINT32_MAX;
     size_t offset = 0U;
-    size_t total_size = HEADER_SIZE + payload_size;
+    size_t total_size = HEADER_SIZE + payload_size + signature_size;
 
     if (fp == NULL) {
         fprintf(stderr, "open failed: %s: %s\n", path, strerror(errno));
@@ -406,8 +406,10 @@ static int write_component_ihex(const char *path, uint32_t base_addr,
 
             if (source_offset < HEADER_SIZE) {
                 row[i] = header[source_offset];
-            } else {
+            } else if (source_offset < HEADER_SIZE + payload_size) {
                 row[i] = payload[source_offset - HEADER_SIZE];
+            } else {
+                row[i] = signature[source_offset - HEADER_SIZE - payload_size];
             }
         }
 
@@ -465,6 +467,8 @@ static void set_symbol(struct application_symbols *symbols, const char *name,
         symbols->slot_start = address;
     } else if (strcmp(name, "__module_flash_start") == 0) {
         symbols->flash_start = address;
+    } else if (strcmp(name, "__module_flash_end") == 0) {
+        symbols->flash_end = address;
     } else if (strcmp(name, "__module_entry") == 0) {
         symbols->entry = address;
     } else if (strcmp(name, "__module_data_load") == 0) {
@@ -556,7 +560,8 @@ static void build_header(uint8_t *header, const struct application_symbols *symb
     put_fixed_string(header + 16U, 16U, version);
     put_fixed_string(header + 32U, 64U, name);
     put_le32(header + 96U, ram_size);
-    put_le32(header + 100U, RTBUS_IMAGE_FLAGS_MAKE_NATIVE_ABI(RTBUS_API_VERSION));
+    put_le32(header + 100U, RTBUS_IMAGE_FLAGS_MAKE_NATIVE_ABI(RTBUS_API_VERSION) |
+                              RTBUS_IMAGE_SIGNATURE_FLAGS);
 
     put_le32(reserved + 0U, symbols->entry - symbols->flash_start);
     put_le32(reserved + 4U, symbols->data_load - symbols->flash_start);
@@ -577,12 +582,33 @@ int main(int argc, char **argv)
     char version_base[32];
     char version_build[32];
     char version[64];
+    const char *signing_key = getenv("RTBUS_SIGNING_KEY");
+    uint8_t signature[SIGNATURE_SIZE];
+    const size_t signature_size = SIGNATURE_SIZE;
 
+    if (argc == 4 && strcmp(argv[1], "--public-key") == 0) {
+        uint8_t key[32];
+        uint8_t public_key[65];
+        if (rtbus_read_private_key(argv[2], key) != 0 ||
+            rtbus_public_key(key, public_key) != 0) {
+            return 1;
+        }
+        return write_binary_file(argv[3], public_key, sizeof(public_key)) != 0;
+    }
+    /* Arduino's command parser may omit an empty export_dir argument. Keep
+     * the key self-identifying so it can never become an export directory. */
+    if (argc > 1 && strncmp(argv[argc - 1], "--signing-key=", 14) == 0) {
+        if (signing_key == NULL || signing_key[0] == '\0') {
+            signing_key = argv[argc - 1] + 14;
+        }
+        --argc;
+    }
     if (argc != 12 && argc != 13 && argc != 14 && argc != 15) {
         fprintf(stderr,
                 "usage: %s <pack> <project> <payload.bin> <payload.out> <map> "
                 "<signed.bin> <signed.hex> <slot.txt> <name> <version> "
-                "<build> [export_dir] [raw.hex raw.elf [export_dir]]\n",
+                "<build> [export_dir] [raw.hex raw.elf [export_dir]] "
+                "[--signing-key=private.key]\n",
                 argv[0]);
         return 2;
     }
@@ -608,14 +634,62 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    if (payload_size == 0U || payload_size > UINT32_MAX - HEADER_SIZE - SIGNATURE_SIZE) {
+        fprintf(stderr, "invalid application payload size\n");
+        free(payload);
+        return 1;
+    }
+
+    if (signing_key == NULL || signing_key[0] == '\0') {
+        fprintf(stderr, "RTBUS_SIGNING_KEY is required; unsigned application packaging is disabled\n");
+        free(payload);
+        return 1;
+    }
+    if (symbols.flash_end <= symbols.flash_start ||
+        payload_size + signature_size > symbols.flash_end - symbols.flash_start) {
+        fprintf(stderr, "application payload and signature exceed the component slot\n");
+        free(payload);
+        return 1;
+    }
+
     crc = crc32_update(0U, payload, payload_size);
     build_header(header, &symbols, argv[9], version, ram_size,
                  (uint32_t)payload_size, crc);
 
+    {
+        FILE *fp;
+
+        if (sign_component(header, payload, payload_size, signing_key, signature) != 0 ||
+            write_component_file(argv[6], header, payload, payload_size) != 0) {
+            remove(argv[6]);
+            remove(argv[7]);
+            free(payload);
+            return 1;
+        }
+        fp = fopen(argv[6], "ab");
+        if (fp == NULL) {
+            remove(argv[6]);
+            remove(argv[7]);
+            free(payload);
+            return 1;
+        }
+        {
+            int failed = fwrite(signature, 1, signature_size, fp) != signature_size;
+            if (fclose(fp) != 0) {
+                failed = 1;
+            }
+            if (failed) {
+                remove(argv[6]);
+                remove(argv[7]);
+                free(payload);
+                return 1;
+            }
+        }
+    }
+
     if (write_binary_file(argv[4], payload, payload_size) != 0 ||
-        write_component_file(argv[6], header, payload, payload_size) != 0 ||
         write_component_ihex(argv[7], symbols.slot_start, header, payload,
-                             payload_size) != 0 ||
+                             payload_size, signature, signature_size) != 0 ||
         write_slot_address(argv[8], symbols.slot_start) != 0) {
         free(payload);
         return 1;
@@ -662,6 +736,7 @@ int main(int argc, char **argv)
            (unsigned int)(symbols.data_end - symbols.data_start),
            (unsigned int)(symbols.bss_end - symbols.bss_start), crc);
     printf("Application HEX: %s slot=0x%08x\n", argv[7], symbols.slot_start);
+    printf("Application signature: ECDSA P-256 / SHA-256 (RFC 6979)\n");
 
     free(payload);
     return 0;

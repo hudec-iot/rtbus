@@ -28,6 +28,7 @@ ZEPHYR_VERSION ?= v4.4.0
 DOCKER_IMAGE ?= ghcr.io/hudec-iot/rtbus-zephyr:1.0.1
 DOCKER_WORK ?= /workdir
 DOCKER_HOST_WORKDIR ?= $(CURDIR)
+RTBUS_SIGNING_KEY ?= application-p256-private.key
 docker_path = $(if $(filter /%,$(1)),$(1),$(DOCKER_WORK)/$(1))
 RTBUS_ZEPHYR_WORKSPACE ?= /opt/rtbus/zephyr-workspace
 RTBUS_CONTAINER_BUILD_ROOT ?= /tmp/rtbus-build
@@ -35,7 +36,8 @@ RTBUS_ZEPHYR_VOLUME ?= rtbus-zephyr-workspace-$(ZEPHYR_VERSION)
 
 EMPTY :=
 SPACE := $(EMPTY) $(EMPTY)
-ZEPHYR_PROJECT_FILTER_RAW := -loramac-node,
+ZEPHYR_PROJECT_FILTER_RAW := -mcuboot,
+ZEPHYR_PROJECT_FILTER_RAW += -loramac-node,
 ZEPHYR_PROJECT_FILTER_RAW += -hal_adi,
 ZEPHYR_PROJECT_FILTER_RAW += -hal_afbr,
 ZEPHYR_PROJECT_FILTER_RAW += -hal_atmel,
@@ -120,6 +122,7 @@ DOCKER_RUN_BASE = $(VM) run --rm \
 	-w $(DOCKER_WORK) \
 	-e RTBUS_ZEPHYR_WORKSPACE=$(RTBUS_ZEPHYR_WORKSPACE) \
 	-e ZEPHYR_BASE=$(RTBUS_ZEPHYR_WORKSPACE)/zephyr \
+	-e "RTBUS_SIGNING_KEY=$(if $(strip $(RTBUS_SIGNING_KEY)),$(call docker_path,$(RTBUS_SIGNING_KEY)),)" \
 	-e ZEPHYR_SDK_INSTALL_DIR=/opt/toolchains/zephyr-sdk-$(ZEPHYR_SDK_VERSION) \
 	-e ZEPHYR_TOOLCHAIN_VARIANT=zephyr
 

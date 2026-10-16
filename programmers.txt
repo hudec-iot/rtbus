@@ -3,7 +3,7 @@ none.communication=serial
 none.protocol=ymodem
 none.program.tool=ymodem_upload
 
-jlink.name=J-Link Remote (RTBus Bootloader + Runtime)
+jlink.name=J-Link Remote (RTBus Runtime)
 jlink.communication=network
 jlink.protocol=jlink
 jlink.program.tool=jlink
