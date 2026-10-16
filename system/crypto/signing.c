@@ -14,10 +14,15 @@
 #define uECC_SUPPORT_COMPRESSED_POINT 0
 #define _UECC_PLATFORM_SPECIFIC_H_
 #include "micro-ecc/uECC.c"
+#define WORD rtbus_sha_word
+#define BYTE rtbus_sha_byte
 #include "sha256/sha256.c"
+#undef BYTE
+#undef WORD
 
-typedef char rtbus_sha256_word_must_be_32_bits[sizeof(WORD) == 4 && CHAR_BIT == 8 ? 1 : -1];
+typedef char rtbus_sha256_word_must_be_32_bits[sizeof(rtbus_sha_word) == 4 && CHAR_BIT == 8 ? 1 : -1];
 
+#ifndef RTBUS_KEY_DERIVE_ONLY
 struct rtbus_sign_hash {
     uECC_HashContext interface;
     SHA256_CTX sha;
@@ -42,6 +47,7 @@ static void rtbus_hash_finish(const uECC_HashContext *base, uint8_t *digest)
     struct rtbus_sign_hash *ctx = (struct rtbus_sign_hash *)base;
     sha256_final(&ctx->sha, digest);
 }
+#endif
 
 static int rtbus_read_private_key(const char *path, uint8_t key[32])
 {
@@ -89,12 +95,13 @@ static int rtbus_public_key(const uint8_t key[32], uint8_t public_key[65])
     return 0;
 }
 
+#ifndef RTBUS_KEY_DERIVE_ONLY
 static int sign_component(const uint8_t *header, const uint8_t *payload,
                           size_t payload_size, const char *path,
-                          uint8_t signature[RTBUS_IMAGE_P256_SIGNATURE_SIZE])
+                          uint8_t signature[RTBUS_IMAGE_P256_SIGNATURE_SIZE],
+                          uint8_t public_key[65])
 {
     uint8_t key[32];
-    uint8_t public_key[65];
     uint8_t digest[32];
     SHA256_CTX sha;
     struct rtbus_sign_hash hash;
@@ -122,3 +129,4 @@ static int sign_component(const uint8_t *header, const uint8_t *payload,
     }
     return 0;
 }
+#endif

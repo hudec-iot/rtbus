@@ -130,7 +130,12 @@
 		runtime_partition: partition@0 {
 			compatible = "zephyr,mapped-partition";
 			label = "runtime";
-			reg = <0x00000000 0x000ec000>;
+			reg = <0x00000000 0x000eb000>;
+		};
+
+		runtime_key_partition: partition@eb000 {
+			label = "runtime_key";
+			reg = <0x000eb000 0x00001000>;
 		};
 
 		component_slot_partition: partition@ec000 {
@@ -175,4 +180,14 @@
             zephyr,memory-region = "SHARED_RAM";
         };
     };
+};
+
+/* Link the default public key into the same independent Flash partition. */
+/ {
+	runtime_key_memory: runtime-key-memory@eb000 {
+		compatible = "zephyr,memory-region";
+		reg = <0x000eb000 0x1000>;
+		zephyr,memory-region = "RTBUS_KEY";
+		zephyr,memory-region-flags = "r";
+	};
 };

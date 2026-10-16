@@ -27,6 +27,8 @@ PLATFORM_FILES = (
     "system",
     "application-p256-private.key",
     "application-p256-public.pub",
+    "generate-keys.sh",
+    "generate-keys.bat",
     "boards.txt",
     "platform.txt",
     "programmers.txt",
@@ -182,6 +184,15 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def platform_copy_ignore(directory: str, names: list[str]) -> set[str]:
+    ignored = set(shutil.ignore_patterns(
+        "build", "build.*", "bootloader.hex", "runtime.signed.hex"
+    )(directory, names))
+    if Path(directory) == REPO_ROOT / "libraries/RTDuo":
+        ignored.add("development")
+    return ignored
+
+
 def copy_platform_tree(destination: Path) -> None:
     destination.mkdir(parents=True)
 
@@ -191,7 +202,7 @@ def copy_platform_tree(destination: Path) -> None:
 
         if source.is_dir():
             shutil.copytree(source, target, symlinks=False,
-                            ignore=shutil.ignore_patterns("build", "build.*", "bootloader.hex", "runtime.signed.hex"))
+                            ignore=platform_copy_ignore)
         else:
             shutil.copy2(source, target)
 

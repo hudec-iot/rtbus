@@ -23,6 +23,7 @@
 #define SIGNATURE_SIZE RTBUS_IMAGE_P256_SIGNATURE_SIZE
 
 #include "crypto/signing.c"
+#include "key/key_store.c"
 #define IHEX_RECORD_DATA 0x00U
 #define IHEX_RECORD_EOF 0x01U
 #define IHEX_RECORD_EXT_LINEAR_ADDR 0x04U
@@ -33,6 +34,7 @@ struct application_symbols {
     uint32_t slot_start;
     uint32_t flash_start;
     uint32_t flash_end;
+    uint32_t key_store_start;
     uint32_t entry;
     uint32_t data_load;
     uint32_t data_start;
@@ -353,29 +355,6 @@ static int write_binary_file(const char *path, const uint8_t *data, size_t size)
     return 0;
 }
 
-static int write_ihex_record(FILE *fp, uint8_t type, uint16_t address,
-                             const uint8_t *data, uint8_t len)
-{
-    uint8_t sum = len + (uint8_t)(address >> 8) + (uint8_t)address + type;
-
-    if (fprintf(fp, ":%02X%04X%02X", len, address, type) < 0) {
-        return -1;
-    }
-
-    for (uint8_t i = 0; i < len; i++) {
-        sum = (uint8_t)(sum + data[i]);
-        if (fprintf(fp, "%02X", data[i]) < 0) {
-            return -1;
-        }
-    }
-
-    if (fprintf(fp, "%02X\n", (uint8_t)(0U - sum)) < 0) {
-        return -1;
-    }
-
-    return 0;
-}
-
 static int write_component_ihex(const char *path, uint32_t base_addr,
                                 const uint8_t *header, const uint8_t *payload,
                                 size_t payload_size, const uint8_t *signature,
@@ -467,6 +446,8 @@ static void set_symbol(struct application_symbols *symbols, const char *name,
         symbols->slot_start = address;
     } else if (strcmp(name, "__module_flash_start") == 0) {
         symbols->flash_start = address;
+    } else if (strcmp(name, "__rtbus_key_store_start") == 0) {
+        symbols->key_store_start = address;
     } else if (strcmp(name, "__module_flash_end") == 0) {
         symbols->flash_end = address;
     } else if (strcmp(name, "__module_entry") == 0) {
@@ -584,6 +565,9 @@ int main(int argc, char **argv)
     char version[64];
     const char *signing_key = getenv("RTBUS_SIGNING_KEY");
     uint8_t signature[SIGNATURE_SIZE];
+    uint8_t public_key[65];
+    char key_hex[PATH_BUFFER_SIZE];
+    char public_file[PATH_BUFFER_SIZE];
     const size_t signature_size = SIGNATURE_SIZE;
 
     if (argc == 4 && strcmp(argv[1], "--public-key") == 0) {
@@ -652,6 +636,20 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    {
+        size_t dir_size = (size_t)(base_name(argv[6]) - argv[6]);
+        if (symbols.key_store_start == 0U ||
+            dir_size + sizeof("runtime-public.pub") > sizeof(public_file)) {
+            fprintf(stderr, "missing key partition address or output path too long\n");
+            free(payload);
+            return 1;
+        }
+        memcpy(key_hex, argv[6], dir_size);
+        strcpy(key_hex + dir_size, "runtime-key.hex");
+        memcpy(public_file, argv[6], dir_size);
+        strcpy(public_file + dir_size, "runtime-public.pub");
+    }
+
     crc = crc32_update(0U, payload, payload_size);
     build_header(header, &symbols, argv[9], version, ram_size,
                  (uint32_t)payload_size, crc);
@@ -659,7 +657,7 @@ int main(int argc, char **argv)
     {
         FILE *fp;
 
-        if (sign_component(header, payload, payload_size, signing_key, signature) != 0 ||
+        if (sign_component(header, payload, payload_size, signing_key, signature, public_key) != 0 ||
             write_component_file(argv[6], header, payload, payload_size) != 0) {
             remove(argv[6]);
             remove(argv[7]);
@@ -687,7 +685,9 @@ int main(int argc, char **argv)
         }
     }
 
-    if (write_binary_file(argv[4], payload, payload_size) != 0 ||
+    if (write_key_hex(key_hex, symbols.key_store_start, public_key) != 0 ||
+        write_binary_file(public_file, public_key, sizeof(public_key)) != 0 ||
+        write_binary_file(argv[4], payload, payload_size) != 0 ||
         write_component_ihex(argv[7], symbols.slot_start, header, payload,
                              payload_size, signature, signature_size) != 0 ||
         write_slot_address(argv[8], symbols.slot_start) != 0) {
@@ -697,6 +697,8 @@ int main(int argc, char **argv)
 
     if (argc == 13) {
         const char *outputs[] = {
+            key_hex,
+            public_file,
             argv[3],
             argv[4],
             argv[5],
@@ -712,6 +714,8 @@ int main(int argc, char **argv)
         }
     } else if (argc == 15) {
         const char *outputs[] = {
+            key_hex,
+            public_file,
             argv[3],
             argv[4],
             argv[5],
@@ -736,6 +740,7 @@ int main(int argc, char **argv)
            (unsigned int)(symbols.data_end - symbols.data_start),
            (unsigned int)(symbols.bss_end - symbols.bss_start), crc);
     printf("Application HEX: %s slot=0x%08x\n", argv[7], symbols.slot_start);
+    printf("Runtime key HEX: %s (J-Link only)\n", key_hex);
     printf("Application signature: ECDSA P-256 / SHA-256 (RFC 6979)\n");
 
     free(payload);

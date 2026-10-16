@@ -4,7 +4,9 @@
 .agents/
 .codex/
 .west/
+.wiki
 .tmp/
+.key-backup*
 build*/
 !/cores/*/firmware/runtime.hex
 *.elf
@@ -18,3 +20,4 @@ build*/
 TODO.md
 project.*
 /*.sh
+!/generate-keys.sh

@@ -22,7 +22,7 @@ arduino.boards: docker.image arduino.package.local
 .PHONY: application
 application: docker.image arduino.package.local
 	@test -n "$(ARDUINO_BOARD_ID)" || { echo "Unsupported BOARD_PROFILE=$(BOARD_PROFILE)" >&2; exit 1; }
-	$(DOCKER_RUN) arduino-cli --config-file $(ARDUINO_CONFIG) compile \
+	@$(DOCKER_RUN) arduino-cli --config-file $(ARDUINO_CONFIG) compile \
 		--verbose \
 		--fqbn $(ARDUINO_FQBN) \
 		--build-path "$(call docker_path,$(ARDUINO_APPLICATION_BUILD_DIR))" \
@@ -43,5 +43,5 @@ arduino.clean:
 arduino.package.local:
 	rm -rf $(ARDUINO_PACKAGE_DIR)
 	mkdir -p $(ARDUINO_PACKAGE_DIR)
-	tar --exclude='build' --exclude='build.*' --exclude='bootloader.hex' --exclude='runtime.signed.hex' -cf - cores variants libraries system application-p256-private.key application-p256-public.pub boards.txt platform.txt programmers.txt LICENSE NOTICE SOURCE_INFO.md THIRD_PARTY_NOTICES.md | tar -xf - -C $(ARDUINO_PACKAGE_DIR)
+	tar --exclude='build' --exclude='build.*' --exclude='bootloader.hex' --exclude='runtime.signed.hex' --exclude='libraries/RTDuo/development' -cf - cores variants libraries system application-p256-private.key application-p256-public.pub generate-keys.sh generate-keys.bat boards.txt platform.txt programmers.txt LICENSE NOTICE SOURCE_INFO.md THIRD_PARTY_NOTICES.md | tar -xf - -C $(ARDUINO_PACKAGE_DIR)
 	cp zephyr/application-signing.md "$(ARDUINO_PACKAGE_DIR)/APPLICATION_SIGNING.md"

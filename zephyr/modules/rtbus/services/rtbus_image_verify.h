@@ -2,6 +2,7 @@
 #ifndef RTBUS_IMAGE_VERIFY_H_
 #define RTBUS_IMAGE_VERIFY_H_
 
+#include <runtime_macro.h>
 #include <stddef.h>
 struct flash_area;
 

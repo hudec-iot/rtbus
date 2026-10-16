@@ -4,15 +4,43 @@
 
 #include <errno.h>
 #include <psa/crypto.h>
+#include <zephyr/devicetree.h>
 #include <zephyr/kernel.h>
 #include <zephyr/storage/flash_map.h>
 #include <zephyr/sys/util.h>
 
-static const uint8_t public_key[] = {
+BUILD_ASSERT(DT_REG_ADDR(DT_NODELABEL(runtime_key_partition)) +
+             DT_REG_SIZE(DT_NODELABEL(runtime_key_partition)) <=
+             DT_REG_ADDR(DT_NODELABEL(component_slot_partition)));
+
+BUILD_ASSERT(DT_REG_ADDR(DT_NODELABEL(runtime_key_memory)) ==
+             DT_REG_ADDR(DT_CHOSEN(zephyr_flash)) +
+             DT_REG_ADDR(DT_NODELABEL(runtime_key_partition)));
+BUILD_ASSERT(DT_REG_SIZE(DT_NODELABEL(runtime_key_memory)) ==
+             DT_REG_SIZE(DT_NODELABEL(runtime_key_partition)));
+
+/* Linked into the dedicated Flash region, never cached by the verifier. */
+const uint8_t rtbus_default_public_key[]
+    __attribute__((section(".rtbus_public_key"), used, aligned(4))) = {
 #include "rtbus_image_public_key.inc"
 };
 
-BUILD_ASSERT(sizeof(public_key) == 65, "P-256 public key must be SEC1 uncompressed");
+static int read_public_key(uint8_t public_key[RTBUS_KEY_PUBLIC_SIZE])
+{
+    const struct flash_area *area;
+    int rc = flash_area_open(PARTITION_ID(runtime_key_partition), &area);
+
+    if (rc != 0) return rc;
+    if (area->fa_size < RTBUS_KEY_PUBLIC_SIZE) {
+        flash_area_close(area);
+        return -EINVAL;
+    }
+    rc = flash_area_read(area, 0, public_key, RTBUS_KEY_PUBLIC_SIZE);
+    flash_area_close(area);
+    if (rc != 0) return rc;
+    if (public_key[0] != 0x04) return -EACCES;
+    return 0;
+}
 
 /* Bound concurrent ECDSA workspace use by image status and upgrade callers. */
 K_MUTEX_DEFINE(image_verify_lock);
@@ -25,6 +53,7 @@ int rtbus_image_verify(const struct flash_area *area, size_t signed_size)
     uint8_t buf[128];
     uint8_t digest[32];
     uint8_t signature[RTBUS_IMAGE_P256_SIGNATURE_SIZE];
+    uint8_t public_key[RTBUS_KEY_PUBLIC_SIZE];
     size_t digest_size;
     size_t offset = 0U;
     psa_status_t status;
@@ -36,6 +65,9 @@ int rtbus_image_verify(const struct flash_area *area, size_t signed_size)
     }
 
     k_mutex_lock(&image_verify_lock, K_FOREVER);
+    rc = read_public_key(public_key);
+    if (rc != 0) goto out;
+    rc = -EACCES;
     status = psa_crypto_init();
     if (status != PSA_SUCCESS) {
         goto out;

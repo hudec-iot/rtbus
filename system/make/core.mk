@@ -96,7 +96,7 @@ compile: $(SIGNED_HEX)
 $(BUILD_DIR):
 	@mkdir -p $@
 
-$(PACKER): $(PACK_SRC) $(ABI_INCLUDE)/rtbus_image_format.h $(wildcard $(SYSTEM_DIR)/crypto/*.[ch] $(SYSTEM_DIR)/crypto/micro-ecc/* $(SYSTEM_DIR)/crypto/sha256/*.[ch]) | $(BUILD_DIR)
+$(PACKER): $(PACK_SRC) $(ABI_INCLUDE)/rtbus_image_format.h $(FRAMEWORK_INCLUDE)/runtime_macro.h $(SYSTEM_DIR)/key/key_store.h $(SYSTEM_DIR)/key/key_store.c $(wildcard $(SYSTEM_DIR)/crypto/*.[ch] $(SYSTEM_DIR)/crypto/micro-ecc/* $(SYSTEM_DIR)/crypto/sha256/*.[ch]) | $(BUILD_DIR)
 	$(HOST_CC) -x c -std=c99 -Wall -Wextra -Werror -O2 -o $@ $<
 
 $(OBJECT): $(SRC) | $(BUILD_DIR)

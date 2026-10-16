@@ -122,8 +122,10 @@ config RTBUS_IMAGE_VERIFY_P256
     help
       Verify SHA-256/ECDSA P-256 signatures before committing an update
       and before loading an application. Require the current signed image format.
-      Supply RTBUS_IMAGE_PUBLIC_KEY_FILE as a CMake argument, pointing to a
-      65-byte SEC1 uncompressed P-256 public key. No private key belongs in the runtime.
+      Read the public key from runtime_key_partition. Only J-Link
+      updates this partition; application DFU never writes it. Runtime compilation
+      reads only the default public key and links it at
+      the fixed Flash address. It never reads a private key.
       Enable the PSA provider and algorithms in the runtime configuration
       (see app-p256.conf), rather than selecting them from this service.
 

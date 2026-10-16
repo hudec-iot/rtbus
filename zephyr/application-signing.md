@@ -12,7 +12,8 @@ The SDK includes an intentionally public reference pair:
 - `application-p256-private.key`: 64 hexadecimal digits representing a 32-byte,
   big-endian P-256 private scalar; trailing whitespace is accepted.
 - `application-p256-public.pub`: 65 binary bytes, SEC1 uncompressed format
-  (`0x04 || X[32] || Y[32]`). This public key is embedded in runtime.
+  (`0x04 || X[32] || Y[32]`). Zephyr compilation reads this public key and links it
+  at the fixed Flash address in the SDK `runtime.hex`.
 
 The root files are included in both local Arduino staging and release archives.
 This guide is distributed as `APPLICATION_SIGNING.md` at the SDK root.
@@ -35,9 +36,11 @@ Standalone native applications continue to use their core entry:
 make -C cores/rak4631
 ```
 
-Override `RTBUS_SIGNING_KEY` for application builds and
-`RTBUS_IMAGE_PUBLIC_KEY_FILE` for runtime builds to use another pair. Relative
-container paths are resolved against the repository mount (`/workdir` by default).
+Override `RTBUS_SIGNING_KEY` to select the application private key. Runtime
+compilation reads only `RTBUS_IMAGE_PUBLIC_KEY_FILE` (default
+`application-p256-public.pub`), never the private key. Relative container paths
+are resolved against
+the repository mount (`/workdir` by default).
 For Arduino IDE/CLI, override the `build.application.signing.key` build property,
 or set `RTBUS_SIGNING_KEY` before launching the IDE. An explicit nonempty
 environment variable takes precedence over the recipe's SDK reference-key path.
@@ -52,11 +55,65 @@ application_pack.exe --public-key replacement-private.key replacement-public.pub
 
 Private-key generation remains separate from normal builds and requires a
 cryptographically random scalar in the P-256 group range.
-Replacing a key pair requires rebuilding both runtime and application.
+Generate a replacement pair using `generate-keys.sh [output-directory]` or
+`generate-keys.bat [output-directory]`. The scripts back up existing files and use
+the bundled C source with TCC (or a host C compiler on Unix), without OpenSSL.
+Select that private key for the application and for Arduino Burn Bootloader.
+
+After changing keys, rebuild the application and use **Tools > Burn Bootloader**
+with J-Link to reinstall the SDK runtime and the new public key. Users do
+not need Zephyr or a runtime compiler. The J-Link helper derives the public key
+from the currently selected private key and writes it after loading runtime,
+before resetting and starting the MCU. `RTBUS_SIGNING_KEY`, when set, takes
+precedence over `build.application.signing.key` in both operations.
 
 The runtime target merges `zephyr/runtime/app-p256.conf` with the selected board
-configuration. Direct Zephyr builds must merge the same fragment and pass
-`-DRTBUS_IMAGE_PUBLIC_KEY_FILE=<absolute SEC1 public-key path>` to CMake.
+configuration. Direct Zephyr builds must merge the same fragment. Runtime reads
+its trusted key from `runtime_key_partition` on every verification, allowing
+J-Link to replace the linked default key without rebuilding runtime.
+
+SDK maintainers must rebuild and distribute runtime once for this new Flash
+layout and key-reading implementation. Older prebuilt runtimes that embed their
+public key cannot gain this behavior by replacing the key file or HEX alone.
+Future key changes require J-Link reflashing, but no further Zephyr builds.
+
+## Public-key Flash partition
+
+| Profile | Absolute key address | Reserved erase region | Runtime offset / size |
+| --- | --- | --- | --- |
+| RAK4631 | `0x000EB000` | `0x1000` | `0 / 0xEB000` |
+| RAK3172P/T | `0x08030800` | `0x800` | `0 / 0x30800` |
+| RAK4200 | `0x08017800` | `0x800` | `0 / 0x17800` |
+
+The region is carved from the end of the former runtime partition. Application
+and settings addresses are unchanged. The Devicetree partition is the runtime
+source of truth; board properties and application linker symbols expose the
+corresponding absolute address to host tools.
+
+The region stores the 65-byte SEC1 uncompressed public key (`04 || X || Y`)
+directly, with no additional header, padding, or CRC. Runtime checks the prefix;
+PSA validates the curve point when importing it. Invalid keys or mismatched
+signatures reject application loading and DFU commits while leaving the runtime
+CLI available.
+
+Each application build exports `runtime-public.pub` and `runtime-key.hex` beside
+the signed application. The latter contains only the public key at the reserved
+address; it is a J-Link artifact. It is never appended to application BIN or HEX.
+YMODEM receives only the signed application and never updates the key partition.
+
+The normal Zephyr build reads the default public key and links it into `.rtbus_public_key` at the fixed Flash address. Both
+`build.runtime/zephyr/zephyr.hex` and the copied SDK `runtime.hex` already contain
+the code and default key. There is no separate runtime packing command or TCC
+invocation. Runtime builds do not generate the application-side
+`runtime-public.pub` and `runtime-key.hex` artifacts.
+
+The Arduino Bootloader operation uses one J-Link Commander session to load the
+SDK `runtime.hex` and then a freshly derived key HEX, replacing the default key
+with the application key. No whole-chip erase is used, and runtime HEX data is
+checked to stay within the runtime and reserved key partitions. The root
+`make jlink.download.runtime` target directly flashes `runtime.hex`, including
+its compiled default public key. It does not read the private key or install
+`runtime-key.hex`. An interrupted write may require repeating J-Link installation.
 
 ## Image contract
 

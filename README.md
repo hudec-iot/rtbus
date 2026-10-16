@@ -1,383 +1,84 @@
 # RTBus RTDuo Arduino Platform
 
-RTDuo is the Arduino-compatible application profile for RTBus. It builds small
-Arduino-style native application images that run against a resident RTBus
-runtime firmware through the runtime ABI.
+RTDuo is the Arduino-compatible application profile for RTBus. It builds small,
+signed native application images that run against a resident Zephyr/RTBus runtime
+through the RTBus ABI.
 
-The public Arduino package identity is:
-
-```text
-rtbus:rtduo:<board>
-```
-
-Example:
-
-```text
-rtbus:rtduo:RAK4631
-```
+The runtime owns board integration and services. Application logic can be updated
+independently through YMODEM; capabilities exposed to applications are defined by
+the runtime ABI. See [Architecture and Design](https://github.com/hudec-iot/rtbus/wiki/Architecture-and-Design)
+for the design tradeoffs and comparisons with Arduino Core on Zephyr and LLEXT.
 
 ## Arduino IDE Installation
 
-Add the RTBus package index URL to Arduino IDE:
+Add this URL under **File > Preferences > Additional Boards Manager URLs**:
 
 ```text
 https://github.com/hudec-iot/rtbus/releases/download/package-index/package_rtbus_index.json
 ```
 
-In Arduino IDE, open **File > Preferences**, paste the URL into **Additional
-Boards Manager URLs**, then open **Tools > Board > Boards Manager** and install
-the RTBus RTDuo package.
+Open **Tools > Board > Boards Manager**, install the RTBus RTDuo package, and
+select your board. The package identity is `rtbus:rtduo:<board>`, for example
+`rtbus:rtduo:RAK4631`.
 
-## Why RTBus
+The SDK includes public examples, a TCC-based P-256 signing tool, and a reference
+key pair. Install the runtime through **Tools > Burn Bootloader** using J-Link;
+application updates use **YMODEM Application Upgrade**. See
+[Upload and Runtime Installation](https://github.com/hudec-iot/rtbus/wiki/Upload-and-Runtime-Installation)
+for setup and connection details.
 
-RTBus was started to make embedded application delivery feel closer to Arduino
-while keeping the firmware foundation under Zephyr. The target workflow is:
+## Build from Source
 
-- keep board bring-up, drivers, transports, storage, update policy, and runtime
-  services in one resident firmware image;
-- build user code as a small RTDuo native application image;
-- expose runtime functionality through a stable RTBus ABI instead of linking
-  every application directly against the full firmware;
-- update or replace the application image without rebuilding the whole runtime;
-- keep the runtime/application boundary understandable for small MCU targets.
+Current active board profiles are `rak4631`, `rak3172p`, `rak3172t`, and `rak4200`.
+Repository builds use Docker or Podman with the published builder image selected
+in `system/make/docker.mk`; it is pulled automatically when missing.
 
-This is useful when the product has a stable firmware platform but application
-logic changes often: demos, field scripts, customer-specific behavior,
-teaching examples, diagnostics, or board validation programs. RTBus gives those
-applications a predictable ABI surface and an Arduino-compatible authoring
-model, while the runtime continues to own the hardware integration.
-
-## Why Recommend It
-
-RTBus is recommended for projects that want a lightweight embedded application
-profile rather than a full dynamic module system. The design favors:
-
-- Arduino-compatible application source and package identity.
-- A small, explicit runtime ABI for native applications.
-- Per-board profile configuration through `cores/<profile>/profile.mk` and
-  Zephyr `.conf` / overlay files.
-- Runtime-controlled DFU using `@RTBUS:DFU=APP` and YMODEM.
-- Simple image metadata, validation, and launch behavior owned by RTBus.
-- A thin Zephyr application with RTBus behavior organized as a Zephyr module.
-
-In search terms, this repository is an RTBus RTDuo Arduino platform, a Zephyr
-native application runtime, an embedded runtime ABI, and a small MCU application
-update flow.
-
-## RTDuo vs Arduino Core on Zephyr
-
-RTDuo is not a conventional Arduino core that compiles each sketch into a full
-Zephyr firmware image. RTDuo keeps a Zephyr/RTBus runtime resident on the
-device and builds Arduino-style user code as a smaller native application image
-that talks to the runtime through the RTBus ABI.
-
-In a typical Arduino Core on Zephyr model, the Arduino sketch, Arduino core,
-Zephyr kernel, drivers, board configuration, and product services are linked
-together into one firmware image. Updating the application usually means
-rebuilding and replacing that full image.
-
-In RTDuo, the runtime owns the board integration and product services. The
-application image is a separate RTBus image with metadata, validation, and a
-native application thread managed by `native_service`. This makes the runtime
-boundary explicit: application code calls the runtime through ABI functions
-instead of linking directly against every Zephyr or driver symbol.
-
-This architecture is useful when the runtime should remain stable while
-application behavior changes independently. The tradeoff is that applications
-can only use capabilities exposed through the RTBus ABI, and that ABI becomes a
-long-term compatibility surface that must be designed and maintained.
-
-## RTBus and Zephyr LLEXT
-
-RTBus is not a replacement for Zephyr LLEXT. They solve related but different
-problems.
-
-Zephyr LLEXT is Zephyr's Linkable Loadable Extensions subsystem. It loads
-precompiled ELF extensions at runtime, links them with the main Zephyr binary,
-and lets the host inspect symbols or call functions from the extension.
-
-RTBus uses a narrower product/application model:
-
-- RTBus applications target the RTBus runtime ABI, not arbitrary Zephyr kernel
-  symbols.
-- RTBus keeps hardware services, ABI tables, image storage, validation, and
-  native application launch under the RTBus runtime.
-- RTDuo applications are packaged for the Arduino-compatible
-  `rtbus:rtduo:<board>` workflow.
-- RTBus image updates are designed around a resident runtime and an application
-  slot, currently driven by the RTBus CLI and YMODEM.
-
-Choose LLEXT when you want Zephyr-native loadable ELF extensions that link into
-a Zephyr application and use the LLEXT loader/symbol APIs. Choose RTBus when
-you want a stable embedded runtime ABI, Arduino-style application builds, and a
-clear product runtime that stays resident while small native applications are
-updated independently.
-
-## Board Profiles
-
-The build is selected with `BOARD_PROFILE=<profile>`. Current active profiles
-are defined by `system/make/boards.mk`:
-
-- `rak4631`
-- `rak3172p`
-- `rak3172t`
-- `rak4200`
-
-Each profile owns its board mapping in `cores/<profile>/profile.mk`, and its
-runtime Zephyr settings under `cores/<profile>/zephyr/`.
-
-Useful inspection command:
-
-```sh
-make board.profile BOARD_PROFILE=rak4631
-```
-
-## Build
-
-Builds use `ghcr.io/hudec-iot/rtbus-zephyr:1.0.0` through Docker or Podman.
-The image is pulled automatically when it is not available locally.
-
-The Dockerfile remains in `tools/docker/` for image maintenance. Publication
-uses the existing GitHub Actions flow: manually run `.github-tri_packages.yml`
-in `hudec-iot/rtbus-internal` with `image_tag` and `public_ref`. It dispatches
-`.github-ci_packages.yml` in `hudec-iot/rtbus`, which builds the image through
-`make -C tools/docker build`, authenticates with its `GITHUB_TOKEN`, and pushes
-the image directly to GHCR. GitHub Actions owns login and publication;
-`tools/docker/Makefile` only builds the image.
-
-To rebuild the image locally from the repository root:
-
-```sh
-make -C tools/docker build
-```
-
-List Arduino boards exposed by the local package:
-
-```sh
-make arduino.boards
-```
-
-Build the default Project development sketch at
-`libraries/RTDuo/development/Project/` (kept outside the Arduino IDE examples menu):
+Build the default development application and the runtime:
 
 ```sh
 make application BOARD_PROFILE=rak4631
-```
-
-Build the simple HelloWorld sketch instead:
-
-```sh
-make application \
-  BOARD_PROFILE=rak4631 \
-  ARDUINO_SKETCH=libraries/RTDuo/examples/HelloWorld
-```
-
-Build the directly bootable Zephyr runtime:
-
-```sh
 make runtime BOARD_PROFILE=rak4631
 ```
 
-Build a standalone native C application from its core directory:
+Build the public HelloWorld example:
 
 ```sh
-cd cores/rak4631
-make
+make application BOARD_PROFILE=rak4631 \
+  ARDUINO_SKETCH=libraries/RTDuo/examples/HelloWorld
 ```
 
-The board-local Makefile starts the builder container and invokes
-`system/make/core.mk` inside it. Zephyr GCC and the image packer run in the
-container; no host Zephyr SDK installation is required. Native artifacts are
-written to `cores/<profile>/build/`. Run `make clean` in the same core directory
-to remove them.
-
-`VM` selects Docker or Podman, and `DOCKER_IMAGE` overrides the published
-image at either the root or board-local build entry. To try Dockerfile changes
-locally before publishing:
+Build a standalone native C application:
 
 ```sh
-make -C tools/docker build RTBUS_BUILDER_IMAGE=localhost/rtbus-zephyr:dev
-make application BOARD_PROFILE=rak4631 DOCKER_IMAGE=localhost/rtbus-zephyr:dev
+make -C cores/rak4631
 ```
 
-The root `make application` and `make application.clean` commands always use
-the Arduino flow. Native builds use `cores/<profile>/Makefile`; there is no
-root GCC backend selector.
+The default development sketch stays in the repository and is excluded from SDK
+packages. See [Build and Board Profiles](https://github.com/hudec-iot/rtbus/wiki/Build-and-Board-Profiles)
+for configuration, output locations, container maintenance, and Flash layouts.
 
-`arduino-cli.yaml` configures the repository-local Arduino data, downloads,
-and package directories used by the root Arduino commands.
+## Documentation
 
-Runtime builds are exported under `cores/<profile>/firmware/build.runtime/`.
-Successful builds copy `zephyr/zephyr.hex` to
-`cores/<profile>/firmware/runtime.hex` for SDK distribution and J-Link flashing.
-The runtime boots directly from Flash offset zero; MCUboot, its image header,
-secondary image slot and scratch partition are no longer used.
+The [RTBus wiki](https://github.com/hudec-iot/rtbus/wiki) contains the detailed guides:
 
-Flash offsets are relative to the MCU Flash base (`0x00000000` on RAK4631,
-`0x08000000` on the STM32 profiles):
+- [Architecture and Design](https://github.com/hudec-iot/rtbus/wiki/Architecture-and-Design):
+  resident runtime model, ABI boundaries, and comparisons.
+- [Build and Board Profiles](https://github.com/hudec-iot/rtbus/wiki/Build-and-Board-Profiles):
+  Arduino/native builds, board settings, and Flash layouts.
+- [Runtime Architecture](https://github.com/hudec-iot/rtbus/wiki/Runtime-Architecture):
+  subsystem ownership, boot flow, and Kconfig settings.
+- [Upload and Runtime Installation](https://github.com/hudec-iot/rtbus/wiki/Upload-and-Runtime-Installation):
+  J-Link, YMODEM, and runtime CLI commands.
+- [Packaging and Repository Layout](https://github.com/hudec-iot/rtbus/wiki/Packaging-and-Repository-Layout):
+  release workflows, SDK contents, and source locations.
 
-| Profile | Runtime offset / size | Application offset / size | Settings offset / size |
-|---|---|---|---|
-| RAK4631 | `0x00000 / 0xEC000` | `0xEC000 / 0xA000` | `0xF8000 / 0x8000` |
-| RAK3172P/T | `0x00000 / 0x31000` | `0x31000 / 0xA000` | `0x3B000 / 0x5000` |
-| RAK4200 | `0x00000 / 0x18000` | `0x18000 / 0x4000` | `0x1C000 / 0x4000` |
-
-RAK4631 leaves the former 8 KiB scratch region at `0xF6000` unallocated.
-Application and settings addresses are preserved. Application `.signed.bin`
-and `.signed.hex` are RTBus-header-packed images, independent of MCUboot;
-they retain their required native image header.
-
-Rebuild runtime before flashing or releasing this layout. An old MCUboot
-runtime cannot be made directly bootable just by renaming its HEX file.
-Arduino staging and release archives exclude legacy `bootloader.hex` and
-`runtime.signed.hex`; package creation does not build new firmware.
-Cleaning runtime build output preserves the new SDK image.
-
-Generated Arduino and Zephyr build outputs are ignored by git.
-
-## Runtime Architecture
-
-The Zephyr runtime app is intentionally thin. RTBus-owned runtime behavior lives
-under:
-
-```text
-zephyr/modules/rtbus/
-```
-
-Important runtime pieces:
-
-- `services/rtbus_runtime.c`: starts the static RTBus runtime thread, calls
-  `rtbus_init()`, and runs the `rtbus_process()` loop.
-- `services/rtbus_diagnostics.c`: owns the diagnostics task and handles
-  `RTBUS_SYS_INIT`.
-- `services/native_service/`: loads the native image, installs the ABI table,
-  and runs the native application thread.
-- `services/rtbus_cli.c`: parses `@RTBUS:` serial CLI commands.
-- `services/rtbus_image.c`: stores, validates, and exposes RTBus application
-  images.
-- `services/rtbus_ymodem.c`: receives application images over YMODEM.
-
-Expected boot flow:
-
-1. Zephyr starts the RTBus runtime thread.
-2. RTBus initialization posts `RTBUS_SYS_INIT`.
-3. The diagnostics task receives that event and starts `native_service`.
-4. The native service creates and runs the native application thread.
-
-## Runtime CLI
-
-The runtime serial CLI accepts lines prefixed with:
-
-```text
-@RTBUS:
-```
-
-Current commands:
-
-```text
-@RTBUS:TEST
-@RTBUS:DFU=APP
-@RTBUS:REBOOT
-```
-
-`@RTBUS:DFU=APP` stops the native service for upgrade handoff, suppresses native
-console output, receives `application.signed.bin` by YMODEM on runtime serial
-port 0, stores and validates the image, then resumes the native service.
-
-`@RTBUS:REBOOT` requests a cold Zephyr reboot.
-
-## Runtime Configuration
-
-Common RTBus runtime options are configured through Zephyr Kconfig and profile
-`.conf` files:
-
-- `CONFIG_RTBUS_IMAGE_RAM_MAX`: maximum private RAM an RTBus image may declare.
-- `CONFIG_RTBUS_IMAGE_FLASH_PENDING_MAX`: RAM buffer used to coalesce image
-  writes before flushing to flash. The default is `256`; `rak4631` overrides it
-  to `1024`.
-- `CONFIG_RTBUS_RUNTIME_THREAD_STACK_SIZE`: RTBus runtime thread stack size.
-- `CONFIG_RTBUS_RUNTIME_SERIAL_RX_BUFFER_SIZE`: runtime serial RX buffer size.
-
-Per-profile settings live in:
-
-```text
-cores/<profile>/zephyr/runtime.conf
-```
-
-## Package Layout
-
-Arduino IDE's **Tools > Burn Bootloader** uses the locally installed J-Link
-client to connect to `127.0.0.1:19020` over SWD at 1000 kHz. Select the RTDuo
-board and **Tools > Programmer > J-Link Remote (RTBus Runtime)**.
-The operation checks and writes only
-`cores/<profile>/firmware/runtime.hex`, then resets and starts the board.
-The IDE menu still says Burn Bootloader, but installs the directly bootable runtime. The IDE erase phase only
-checks the files; it does not erase the entire chip. RAK4200 needs its firmware
-images supplied before this operation can be used. RAK11720 retains its
-existing VS Code action.
-
-To override the remote server, add `tools.jlink.server=<address>:<port>` to
-`platform.local.txt` beside the installed `platform.txt`.
-
-Windows J-Link is installed manually using SEGGER's official installer.
-It is not downloaded or unpacked by Boards Manager and is not a package
-index dependency. The Windows flashing helper queries `InstallPath` under
-`Software\SEGGER\J-Link` in the Windows registry, including version subkeys,
-current-user and machine installations, and both 32-bit and 64-bit views.
-It executes the registered installation's `JLink.exe` directly on Windows.
-No fixed installation version, Docker, Podman or WSL is required by the IDE
-flashing operation. If no usable registered installation is found, it reports
-that SEGGER's J-Link Software and Documentation Pack must be installed.
-
-The Windows client connects to the remote server over IP. USB driver setup
-belongs to the server host that has the physical probe attached. Container
-use continues to use `/opt/segger/jlink/JLinkExe` from the builder image.
-
-Release CI calls `make -C tools/scripts package` and fetches the published `package-index/package_rtbus_index.json`
-before generating the next index. It retains previous platform versions and
-tool versions/hosts, replacing only matching platform architecture/version
-and tool name/version/host entries. Fetch or JSON validation failures abort
-publication rather than overwrite the index without its history.
-
-The packaging script accepts `--previous-index-url URL` or
-`--previous-index PATH` for this merge. Without either option, local packaging
-still generates a standalone index. Release runs are serialized around the
-shared index update.
-
-The Makefile stages this repository as a local Arduino package at:
-
-```text
-.arduino/package/hardware/rtbus/rtduo
-```
-
-Main source areas:
-
-- `cores/`: RTDuo core implementations and profile-owned Zephyr config.
-- `variants/`: Arduino variant headers.
-- `libraries/`: Arduino libraries and examples.
-- `system/framework/abi/include/`: shared ABI version, slots, events, and data layouts.
-- `system/framework/include/`: application API declarations and wrappers.
-- `system/make/`: shared build configuration, board selection, Arduino,
-  flash, CI, and native GCC rules.
-- `system/startup.S`: application entry and ABI call thunks.
-- `system/header.c`: host-side image packer, compiled inside the builder.
-- `system/ymodem_upload.c`: application upload tooling.
-- `tools/`: host-side container and packaging tools.
-- `tools/scripts/Makefile`: release package/index generation invoked by GitHub Actions.
-- `tools/docker/docker.mk`: shared builder image and container execution settings.
-- `cores/<profile>/Makefile`: native application container entry point.
-- `zephyr/runtime/`: thin Zephyr runtime application.
-- `zephyr/modules/rtbus/`: RTBus subsystem implementation.
-
-## Status
-
-This repository contains the RTBus RTDuo Arduino platform. Native runtime ABI
-names use RTBus terminology, and the public Arduino package identity remains
-`rtbus:rtduo`.
+[Application signing](zephyr/application-signing.md) documents P-256 keys and the
+image format. The SDK includes that guide as `APPLICATION_SIGNING.md`.
 
 ## License
 
-RTBus-owned source is licensed under MPL-2.0; see LICENSE and NOTICE.
-Third-party software keeps its own licenses. See THIRD_PARTY_NOTICES.md and
-SOURCE_INFO.md for component information, source availability, and firmware
-provenance requirements. These documents are included in SDK packages.
+RTBus-owned source uses MPL-2.0; see [LICENSE](LICENSE) and [NOTICE](NOTICE).
+Third-party software retains its own licenses. See
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and [SOURCE_INFO.md](SOURCE_INFO.md)
+for component information and firmware provenance. These documents are included
+in SDK packages.

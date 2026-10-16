@@ -44,10 +44,10 @@ tools.jlink.speed=1000
 tools.jlink.runtime.image={runtime.platform.path}/cores/{build.core}/firmware/runtime.hex
 tools.jlink.erase.params.quiet=
 tools.jlink.erase.params.verbose=
-tools.jlink.erase.pattern="{cmd.path}" {flags} -x c -std=c99 -Wall -Wextra -Werror -O2 -run "{runtime.platform.path}/system/jlink_runtime.c" check "{client.path}" "{build.jlink.device}" "{server}" "{speed}" "{runtime.image}"
+tools.jlink.erase.pattern="{cmd.path}" {flags} -x c -std=c99 -Wall -Wextra -Werror -O2 -run "{runtime.platform.path}/system/jlink_runtime.c" check "{client.path}" "{build.jlink.device}" "{server}" "{speed}" "{runtime.image}" "{build.application.signing.key}" "{build.rtbus.key.address}" "{build.rtbus.key.size}"
 tools.jlink.bootloader.params.quiet=
 tools.jlink.bootloader.params.verbose=
-tools.jlink.bootloader.pattern="{cmd.path}" {flags} -x c -std=c99 -Wall -Wextra -Werror -O2 -run "{runtime.platform.path}/system/jlink_runtime.c" write "{client.path}" "{build.jlink.device}" "{server}" "{speed}" "{runtime.image}"
+tools.jlink.bootloader.pattern="{cmd.path}" {flags} -x c -std=c99 -Wall -Wextra -Werror -O2 -run "{runtime.platform.path}/system/jlink_runtime.c" write "{client.path}" "{build.jlink.device}" "{server}" "{speed}" "{runtime.image}" "{build.application.signing.key}" "{build.rtbus.key.address}" "{build.rtbus.key.size}"
 tools.ymodem_upload.cmd.path={runtime.tools.tcc.path}/bin/tcc
 tools.ymodem_upload.cmd.path.windows={runtime.tools.tcc.path}/tcc.exe
 tools.ymodem_upload.cmd.path.linux={runtime.tools.tcc.path}/bin/tcc
@@ -63,20 +63,6 @@ tools.ymodem_upload.upload.pattern="{cmd.path}" -x c -std=c99 -Wall -Wextra -Wer
 tools.ymodem_upload.program.params.quiet=
 tools.ymodem_upload.program.params.verbose=
 tools.ymodem_upload.program.pattern="{cmd.path}" -x c -std=c99 -Wall -Wextra -Werror -O2 -run "{runtime.platform.path}/system/ymodem_upload.c" "{serial.port}" "{program.speed}" "{build.path}/{build.project_name}.signed.bin"
-tools.rtduo_vscode.cmd=code
-tools.rtduo_vscode.cmd.path=code
-tools.rtduo_vscode.program.params.quiet=
-tools.rtduo_vscode.program.params.verbose=
-tools.rtduo_vscode.program.pattern="{cmd.path}" --extensionDevelopmentPath "{runtime.platform.path}/vscode-extension/rtduo-platform" "{runtime.platform.path}"
-tools.rtduo_vscode.program.pattern.windows=powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath 'code' -ArgumentList @('--extensionDevelopmentPath','{runtime.platform.path}\vscode-extension\rtduo-platform','{runtime.platform.path}')"
-tools.rtduo_vscode.erase.params.quiet=
-tools.rtduo_vscode.erase.params.verbose=
-tools.rtduo_vscode.erase.pattern="{cmd.path}" --extensionDevelopmentPath "{runtime.platform.path}/vscode-extension/rtduo-platform" "{runtime.platform.path}"
-tools.rtduo_vscode.erase.pattern.windows=powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath 'code' -ArgumentList @('--extensionDevelopmentPath','{runtime.platform.path}\vscode-extension\rtduo-platform','{runtime.platform.path}')"
-tools.rtduo_vscode.bootloader.params.quiet=
-tools.rtduo_vscode.bootloader.params.verbose=
-tools.rtduo_vscode.bootloader.pattern="{cmd.path}" --extensionDevelopmentPath "{runtime.platform.path}/vscode-extension/rtduo-platform" "{runtime.platform.path}"
-tools.rtduo_vscode.bootloader.pattern.windows=powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath 'code' -ArgumentList @('--extensionDevelopmentPath','{runtime.platform.path}\vscode-extension\rtduo-platform','{runtime.platform.path}')"
 
 recipe.c.o.pattern="{compiler.path}{compiler.c.cmd}" {compiler.c.flags} {compiler.warning_flags} -DF_CPU={build.f_cpu} -DARDUINO=10819 -DARDUINO_{build.board} -DARDUINO_ARCH_{build.arch} {build.extra_flags} {build.abi.includes} {includes} "{source_file}" -o "{object_file}"
 recipe.cpp.o.pattern="{compiler.path}{compiler.cpp.cmd}" {compiler.cpp.flags} {compiler.warning_flags} -DF_CPU={build.f_cpu} -DARDUINO=10819 -DARDUINO_{build.board} -DARDUINO_ARCH_{build.arch} {build.extra_flags} {build.abi.includes} {includes} "{source_file}" -o "{object_file}"

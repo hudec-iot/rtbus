@@ -3,6 +3,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
+#include <stdint.h>
+#include "framework/abi/include/rtbus_image_format.h"
+#define RTBUS_KEY_DERIVE_ONLY
+#include "crypto/signing.c"
+#include "key/key_store.c"
 #ifdef _WIN32
 #include <windows.h>
 #else
@@ -159,6 +165,12 @@ static int run(char **args)
 int main(int argc, char **argv)
 {
     char script[4096];
+    char key_hex[4110];
+    const char *private_path;
+    uint8_t private_key[32], public_key[65];
+    uint32_t key_address, key_size;
+    unsigned long parsed;
+    char *end;
     char *client;
 #ifdef _WIN32
     char registered_client[4096];
@@ -168,10 +180,24 @@ int main(int argc, char **argv)
     char *args[] = { NULL, "-device", NULL, "-if", "SWD", "-speed", NULL,
                     "-IP", NULL, "-AutoConnect", "1", "-NoGui", "1",
                     "-ExitOnError", "1", "-CommanderScript", script, NULL };
-    if (argc != 7 || (strcmp(argv[1], "check") && strcmp(argv[1], "write"))) {
-        fprintf(stderr, "Usage: jlink_runtime <check|write> <client> <device> <ip:port> <speed-kHz> <runtime.hex>\n");
+    if (argc != 10 || (strcmp(argv[1], "check") && strcmp(argv[1], "write"))) {
+        fprintf(stderr, "Usage: jlink_runtime <check|write> <client> <device> <ip:port> <speed-kHz> <runtime.hex> <private.key> <key-address> <key-partition-size>\n");
         return 1;
     }
+    errno = 0;
+    parsed = strtoul(argv[8], &end, 0);
+    if (errno || end == argv[8] || *end || parsed > UINT32_MAX) return 1;
+    key_address = (uint32_t)parsed;
+    errno = 0;
+    parsed = strtoul(argv[9], &end, 0);
+    if (errno || end == argv[9] || *end || parsed > UINT32_MAX) return 1;
+    key_size = (uint32_t)parsed;
+    if (!key_address || key_size < RTBUS_KEY_PUBLIC_SIZE || key_address % key_size) return 1;
+    private_path = getenv("RTBUS_SIGNING_KEY");
+    if (!private_path || !*private_path) private_path = argv[7];
+    if (rtbus_read_private_key(private_path, private_key) != 0 ||
+        rtbus_public_key(private_key, public_key) != 0 ||
+        validate_runtime_hex(argv[6], (uint64_t)key_address + key_size) != 0) return 1;
     client = argv[2];
 #ifdef _WIN32
     if (!strcmp(client, "registry")) {
@@ -202,8 +228,13 @@ int main(int argc, char **argv)
     }
 #endif
     if (!file) { remove(script); return 1; }
+    snprintf(key_hex, sizeof(key_hex), "%s.key.hex", script);
+    if (write_key_hex(key_hex, key_address, public_key) != 0) {
+        fclose(file); remove(script); remove(key_hex); return 1;
+    }
     fputs("ExitOnError 1\nr\nh\n", file);
     result = loadfile(file, argv[6]);
+    if (result) result = loadfile(file, key_hex);
     fputs("r\ng\nExit\n", file);
     if (fclose(file)) result = 0;
     if (result) {
@@ -212,5 +243,6 @@ int main(int argc, char **argv)
         result = run(args);
     } else result = 1;
     remove(script);
+    remove(key_hex);
     return result;
 }

@@ -76,7 +76,7 @@ docker.image:
 
 .PHONY: zephyr.workspace
 zephyr.workspace: docker.image
-	$(VM) run --user root --rm \
+	@$(VM) run --user root --rm \
 		-v $(RTBUS_ZEPHYR_VOLUME):$(RTBUS_ZEPHYR_WORKSPACE) \
 		-e ZEPHYR_SDK_INSTALL_DIR=/opt/toolchains/zephyr-sdk-$(ZEPHYR_SDK_VERSION) \
 		-e ZEPHYR_TOOLCHAIN_VARIANT=zephyr \

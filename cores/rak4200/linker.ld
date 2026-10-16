@@ -51,3 +51,6 @@ SECTIONS
 
 ASSERT(__module_data_end <= __module_ram_end, "module RAM overflow")
 ASSERT(__module_bss_end <= __module_ram_end, "module RAM overflow")
+
+/* Public key written only by J-Link, outside application slot. */
+__rtbus_key_store_start = 0x08017800;
