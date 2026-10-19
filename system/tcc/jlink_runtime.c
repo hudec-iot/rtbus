@@ -5,10 +5,10 @@
 #include <string.h>
 #include <errno.h>
 #include <stdint.h>
-#include "framework/abi/include/rtbus_image_format.h"
+#include "../framework/abi/include/rtbus_image_format.h"
 #define RTBUS_KEY_DERIVE_ONLY
 #include "crypto/signing.c"
-#include "key/key_store.c"
+#include "key_store/key_store.c"
 #ifdef _WIN32
 #include <windows.h>
 #else

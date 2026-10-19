@@ -20,4 +20,3 @@ build*/
 TODO.md
 project.*
 /*.sh
-!/generate-keys.sh

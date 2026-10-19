@@ -9,6 +9,8 @@
 #include <stdint.h>
 
 int rtbus_runtime_serial_begin(uint32_t port, uint32_t baud);
+int rtbus_runtime_serial_control(uint32_t port, uint32_t operation,
+                                uint32_t baud, uint32_t format);
 int rtbus_runtime_serial_flush_rx(uint32_t port);
 size_t rtbus_runtime_serial_read(uint32_t port, uint8_t *data, size_t size);
 size_t rtbus_runtime_serial_write(uint32_t port, const uint8_t *data,

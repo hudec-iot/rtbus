@@ -9,8 +9,9 @@ if (( $# > 1 )); then
     exit 2
 fi
 
-sdk_root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-output_dir=${1:-$sdk_root}
+secure_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+sdk_root=$(cd -- "$secure_dir/../.." && pwd)
+output_dir=${1:-$secure_dir}
 compiler=${TCC:-tcc}
 if ! command -v "$compiler" >/dev/null 2>&1; then
     if [[ -n ${TCC:-} ]]; then
@@ -27,7 +28,7 @@ fi
 work_dir=$(mktemp -d "${TMPDIR:-/tmp}/rtbus-keygen.XXXXXXXX")
 trap 'rm -rf -- "$work_dir"' EXIT
 "$compiler" -x c -std=c99 -Wall -Wextra -Werror -O2 \
-    -o "$work_dir/application_pack" "$sdk_root/system/header.c"
+    -o "$work_dir/application_pack" "$sdk_root/system/tcc/header.c"
 
 # The private scalar is 32 big-endian bytes, represented as 64 hex digits.
 # --public-key validates its range and derives the matching SEC1 public key.

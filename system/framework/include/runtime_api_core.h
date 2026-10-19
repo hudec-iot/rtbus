@@ -49,6 +49,14 @@ extern int rtbus_gpio_read(uint32_t pin);
 extern int rtbus_post(uint8_t task_id, uint32_t ctx_id, const void *payload, uint32_t payload_len);
 extern int32_t k_delay(uint32_t delay_ms);
 extern uint32_t rtbus_millis(void);
+extern uint32_t rtbus_micros(void);
+extern void rtbus_yield(void);
+extern int rtbus_serial_control(uint32_t port, uint32_t operation, uint32_t baud, uint32_t format);
+typedef void (*rtbus_gpio_irq_callback_t)(void *argument);
+extern int rtbus_gpio_interrupt(uint32_t pin, uint32_t mode, rtbus_gpio_irq_callback_t callback, void *argument);
+extern void rtbus_delay_us(uint32_t us);
+extern void rtbus_irq_disable(void);
+extern void rtbus_irq_restore(void);
 extern void rtbus_rtt_vprintf(const char *fmt, va_list args);
 
 #ifdef __cplusplus

@@ -1,0 +1,8 @@
+{
+    // Workspace extension recommendations only; this file does not install
+    // Docker/Podman, make, builder images, or local extension source.
+    // Marketplace installation requires this extension ID to be published.
+    "recommendations": [
+        "rtbus.rtduo-platform"
+    ]
+}

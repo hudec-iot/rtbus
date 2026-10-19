@@ -83,7 +83,8 @@ future RTBus task event handling.
 - `system/framework/abi/include/`: runtime/application ABI contract.
 - `system/framework/include/`: application API declarations and wrappers.
 - `system/startup.S`: application entry and ABI call thunks.
-- `system/header.c`: host-side application image packer; keep it in the build flow.
+- `system/tcc/header.c`: host-side application image packer; keep it in the build flow.
+- `system/secure/`: reference P-256 keys and key-generation scripts.
 - `cores/<profile>/main.c`: Arduino and standalone native application entry,
   selected by the standard Arduino `ARDUINO` macro.
 - `bootloader/`, `modules/`: upstream or vendored platform pieces.

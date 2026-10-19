@@ -32,11 +32,28 @@ extern "C" {
 #define RUNTIME_BLE_GAP_DATA_MAX                    4U
 #define RUNTIME_BLE_GAP_DATA_VALUE_MAX              31U
 
+/* Serial format uses ArduinoCore-API data/parity/stop bit fields. */
+enum rtbus_serial_control_op {
+    RTBUS_SERIAL_CONTROL_BEGIN = 0,
+    RTBUS_SERIAL_CONTROL_AVAILABLE,
+    RTBUS_SERIAL_CONTROL_END,
+    RTBUS_SERIAL_CONTROL_FLUSH,
+    RTBUS_SERIAL_CONTROL_READY,
+};
+
+#define RTBUS_GPIO_IRQ_DETACH 0U
+#define RTBUS_GPIO_IRQ_LOW 1U
+#define RTBUS_GPIO_IRQ_HIGH 2U
+#define RTBUS_GPIO_IRQ_CHANGE 3U
+#define RTBUS_GPIO_IRQ_FALLING 4U
+#define RTBUS_GPIO_IRQ_RISING 5U
+
 enum runtime_gpio_mode {
     RUNTIME_GPIO_MODE_INPUT = 0,
     RUNTIME_GPIO_MODE_OUTPUT,
     RUNTIME_GPIO_MODE_INPUT_PULLUP,
     RUNTIME_GPIO_MODE_INPUT_PULLDOWN,
+    RUNTIME_GPIO_MODE_OUTPUT_OPENDRAIN,
 };
 
 enum rtbus_task_id {

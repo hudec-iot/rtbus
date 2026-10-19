@@ -22,7 +22,8 @@ select your board. The package identity is `rtbus:rtduo:<board>`, for example
 `rtbus:rtduo:RAK4631`.
 
 The SDK includes public examples, a TCC-based P-256 signing tool, and a reference
-key pair. Install the runtime through **Tools > Burn Bootloader** using J-Link;
+key pair under `system/secure/`, together with the key-generation scripts.
+Install the runtime through **Tools > Burn Bootloader** using J-Link;
 application updates use **YMODEM Application Upgrade**. See
 [Upload and Runtime Installation](https://github.com/hudec-iot/rtbus/wiki/Upload-and-Runtime-Installation)
 for setup and connection details.

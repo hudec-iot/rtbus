@@ -4,21 +4,7 @@
 #include "runtime_api.h"
 
 #ifdef ARDUINO
-void arduino_setup(void);
-void arduino_loop(void);
-
-int main(void)
-{
-    if (!rtbus_api_is_ready()) {
-        return -RTBUS_ENOSYS;
-    }
-
-    arduino_setup();
-
-    while (1) {
-        arduino_loop();
-    }
-}
+#include "../../system/arduino/main.c"
 #else
 static uint32_t module_count;
 

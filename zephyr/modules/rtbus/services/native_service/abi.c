@@ -37,4 +37,14 @@ static void native_api_table_install(void)
         (uintptr_t)native_api_serial_read;
     api_table[RTBUS_API_SLOT_MILLIS] =
         (uintptr_t)native_api_millis;
+    api_table[RTBUS_API_SLOT_DELAY_US] =
+        (uintptr_t)native_api_delay_us;
+    api_table[RTBUS_API_SLOT_IRQ_DISABLE] =
+        (uintptr_t)native_api_irq_disable;
+    api_table[RTBUS_API_SLOT_MICROS] = (uintptr_t)native_api_micros;
+    api_table[RTBUS_API_SLOT_YIELD] = (uintptr_t)native_api_yield;
+    api_table[RTBUS_API_SLOT_SERIAL_CONTROL] = (uintptr_t)native_api_serial_control;
+    api_table[RTBUS_API_SLOT_GPIO_INTERRUPT] = (uintptr_t)native_api_gpio_interrupt;
+    api_table[RTBUS_API_SLOT_IRQ_RESTORE] =
+        (uintptr_t)native_api_irq_restore;
 }

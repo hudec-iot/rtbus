@@ -19,6 +19,11 @@ SECTIONS
         __module_text_start = .;
         *(.text*)
         *(.rodata*)
+        . = ALIGN(4);
+        __rtduo_init_array_start = .;
+        KEEP(*(SORT_BY_INIT_PRIORITY(.init_array.*)))
+        KEEP(*(.init_array))
+        __rtduo_init_array_end = .;
         __module_text_end = .;
     } > MODULE_FLASH
 

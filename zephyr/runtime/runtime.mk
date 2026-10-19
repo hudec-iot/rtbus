@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 RUNTIME_APP_DIR := zephyr/runtime
-RTBUS_IMAGE_PUBLIC_KEY_FILE ?= application-p256-public.pub
+RTBUS_IMAGE_PUBLIC_KEY_FILE ?= system/secure/application-p256-public.pub
 RUNTIME_BOARD_DIR ?= cores/$(BOARD_PROFILE)/zephyr
 BOARD_RUNTIME_CONF ?= $(RUNTIME_BOARD_DIR)/runtime.conf
 BOARD_RUNTIME_OVERLAY ?= $(RUNTIME_BOARD_DIR)/runtime.overlay

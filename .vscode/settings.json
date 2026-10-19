@@ -1,0 +1,14 @@
+{
+    "files.exclude": {
+        "**/.arduino": true,
+        "**/.west": true
+    },
+    "search.exclude": {
+        "**/.arduino/**": true,
+        "**/.west/**": true
+    },
+    "files.watcherExclude": {
+        "**/.arduino/**": true,
+        "**/.west/**": true
+    }
+}

@@ -9,13 +9,13 @@ application build. Runtime uses Zephyr PSA Crypto.
 
 The SDK includes an intentionally public reference pair:
 
-- `application-p256-private.key`: 64 hexadecimal digits representing a 32-byte,
+- `system/secure/application-p256-private.key`: 64 hexadecimal digits representing a 32-byte,
   big-endian P-256 private scalar; trailing whitespace is accepted.
-- `application-p256-public.pub`: 65 binary bytes, SEC1 uncompressed format
+- `system/secure/application-p256-public.pub`: 65 binary bytes, SEC1 uncompressed format
   (`0x04 || X[32] || Y[32]`). Zephyr compilation reads this public key and links it
   at the fixed Flash address in the SDK `runtime.hex`.
 
-The root files are included in both local Arduino staging and release archives.
+The files under `system/secure/` are included in both local Arduino staging and release archives.
 This guide is distributed as `APPLICATION_SIGNING.md` at the SDK root.
 The Arduino recipe explicitly passes the SDK private-key path, so it does not
 rely on the working directory or an environment variable. The packer checks the
@@ -38,7 +38,7 @@ make -C cores/rak4631
 
 Override `RTBUS_SIGNING_KEY` to select the application private key. Runtime
 compilation reads only `RTBUS_IMAGE_PUBLIC_KEY_FILE` (default
-`application-p256-public.pub`), never the private key. Relative container paths
+`system/secure/application-p256-public.pub`), never the private key. Relative container paths
 are resolved against
 the repository mount (`/workdir` by default).
 For Arduino IDE/CLI, override the `build.application.signing.key` build property,
@@ -55,9 +55,11 @@ application_pack.exe --public-key replacement-private.key replacement-public.pub
 
 Private-key generation remains separate from normal builds and requires a
 cryptographically random scalar in the P-256 group range.
-Generate a replacement pair using `generate-keys.sh [output-directory]` or
-`generate-keys.bat [output-directory]`. The scripts back up existing files and use
+Generate a replacement pair using `system/secure/generate-keys.sh [output-directory]` or
+`system/secure/generate-keys.bat [output-directory]`. The scripts back up existing files and use
 the bundled C source with TCC (or a host C compiler on Unix), without OpenSSL.
+Without an output-directory argument, keys and backups are written beside the
+scripts in `system/secure/`. Key backup directories are excluded from SDK archives.
 Select that private key for the application and for Arduino Burn Bootloader.
 
 After changing keys, rebuild the application and use **Tools > Burn Bootloader**

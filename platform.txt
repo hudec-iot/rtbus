@@ -30,9 +30,9 @@ build.application.pack=true
 build.application.name=application
 build.application.version=0.1.0
 build.application.build=0
-build.application.signing.key={runtime.platform.path}/application-p256-private.key
+build.application.signing.key={runtime.platform.path}/system/secure/application-p256-private.key
 build.application.export.path={build.source.path}/build/{build.board}
-tools.application_pack.header.path={runtime.platform.path}/system/header.c
+tools.application_pack.header.path={runtime.platform.path}/system/tcc/header.c
 tools.jlink.cmd.path={runtime.tools.tcc.path}/bin/tcc
 tools.jlink.cmd.path.windows={runtime.tools.tcc.path}/tcc.exe
 tools.jlink.flags=-B{runtime.tools.tcc.path}/lib/tcc
@@ -44,10 +44,10 @@ tools.jlink.speed=1000
 tools.jlink.runtime.image={runtime.platform.path}/cores/{build.core}/firmware/runtime.hex
 tools.jlink.erase.params.quiet=
 tools.jlink.erase.params.verbose=
-tools.jlink.erase.pattern="{cmd.path}" {flags} -x c -std=c99 -Wall -Wextra -Werror -O2 -run "{runtime.platform.path}/system/jlink_runtime.c" check "{client.path}" "{build.jlink.device}" "{server}" "{speed}" "{runtime.image}" "{build.application.signing.key}" "{build.rtbus.key.address}" "{build.rtbus.key.size}"
+tools.jlink.erase.pattern="{cmd.path}" {flags} -x c -std=c99 -Wall -Wextra -Werror -O2 -run "{runtime.platform.path}/system/tcc/jlink_runtime.c" check "{client.path}" "{build.jlink.device}" "{server}" "{speed}" "{runtime.image}" "{build.application.signing.key}" "{build.rtbus.key.address}" "{build.rtbus.key.size}"
 tools.jlink.bootloader.params.quiet=
 tools.jlink.bootloader.params.verbose=
-tools.jlink.bootloader.pattern="{cmd.path}" {flags} -x c -std=c99 -Wall -Wextra -Werror -O2 -run "{runtime.platform.path}/system/jlink_runtime.c" write "{client.path}" "{build.jlink.device}" "{server}" "{speed}" "{runtime.image}" "{build.application.signing.key}" "{build.rtbus.key.address}" "{build.rtbus.key.size}"
+tools.jlink.bootloader.pattern="{cmd.path}" {flags} -x c -std=c99 -Wall -Wextra -Werror -O2 -run "{runtime.platform.path}/system/tcc/jlink_runtime.c" write "{client.path}" "{build.jlink.device}" "{server}" "{speed}" "{runtime.image}" "{build.application.signing.key}" "{build.rtbus.key.address}" "{build.rtbus.key.size}"
 tools.ymodem_upload.cmd.path={runtime.tools.tcc.path}/bin/tcc
 tools.ymodem_upload.cmd.path.windows={runtime.tools.tcc.path}/tcc.exe
 tools.ymodem_upload.cmd.path.linux={runtime.tools.tcc.path}/bin/tcc
@@ -56,13 +56,13 @@ tools.ymodem_upload.flags=
 tools.ymodem_upload.flags.windows=
 tools.ymodem_upload.flags.linux=-B{runtime.tools.tcc.path}/lib/tcc
 tools.ymodem_upload.flags.macosx=-B{runtime.tools.tcc.path}/lib/tcc
-tools.ymodem_upload.source.path={runtime.platform.path}/system/ymodem_upload.c
+tools.ymodem_upload.source.path={runtime.platform.path}/system/tcc/ymodem_upload.c
 tools.ymodem_upload.upload.params.quiet=
 tools.ymodem_upload.upload.params.verbose=
-tools.ymodem_upload.upload.pattern="{cmd.path}" -x c -std=c99 -Wall -Wextra -Werror -O2 -run "{runtime.platform.path}/system/ymodem_upload.c" "{serial.port}" "{upload.speed}" "{build.path}/{build.project_name}.signed.bin"
+tools.ymodem_upload.upload.pattern="{cmd.path}" -x c -std=c99 -Wall -Wextra -Werror -O2 -run "{runtime.platform.path}/system/tcc/ymodem_upload.c" "{serial.port}" "{upload.speed}" "{build.path}/{build.project_name}.signed.bin"
 tools.ymodem_upload.program.params.quiet=
 tools.ymodem_upload.program.params.verbose=
-tools.ymodem_upload.program.pattern="{cmd.path}" -x c -std=c99 -Wall -Wextra -Werror -O2 -run "{runtime.platform.path}/system/ymodem_upload.c" "{serial.port}" "{program.speed}" "{build.path}/{build.project_name}.signed.bin"
+tools.ymodem_upload.program.pattern="{cmd.path}" -x c -std=c99 -Wall -Wextra -Werror -O2 -run "{runtime.platform.path}/system/tcc/ymodem_upload.c" "{serial.port}" "{program.speed}" "{build.path}/{build.project_name}.signed.bin"
 
 recipe.c.o.pattern="{compiler.path}{compiler.c.cmd}" {compiler.c.flags} {compiler.warning_flags} -DF_CPU={build.f_cpu} -DARDUINO=10819 -DARDUINO_{build.board} -DARDUINO_ARCH_{build.arch} {build.extra_flags} {build.abi.includes} {includes} "{source_file}" -o "{object_file}"
 recipe.cpp.o.pattern="{compiler.path}{compiler.cpp.cmd}" {compiler.cpp.flags} {compiler.warning_flags} -DF_CPU={build.f_cpu} -DARDUINO=10819 -DARDUINO_{build.board} -DARDUINO_ARCH_{build.arch} {build.extra_flags} {build.abi.includes} {includes} "{source_file}" -o "{object_file}"

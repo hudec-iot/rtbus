@@ -5,7 +5,7 @@ if not "%~2"=="" (
     exit /b 2
 )
 set "RTBUS_KEYGEN_SCRIPT=%~f0"
-set "RTBUS_KEYGEN_ROOT=%~dp0"
+set "RTBUS_KEYGEN_SECURE_DIR=%~dp0"
 set "RTBUS_KEYGEN_OUTPUT=%~1"
 powershell.exe -NoProfile -NonInteractive -Command "$source = [IO.File]::ReadAllText($env:RTBUS_KEYGEN_SCRIPT); $marker = '# POWERSHELL-BEGIN'; & ([scriptblock]::Create($source.Substring($source.LastIndexOf($marker) + $marker.Length)))"
 exit /b %errorlevel%
@@ -15,9 +15,10 @@ exit /b %errorlevel%
 $ErrorActionPreference = 'Stop'
 $workDir = $null
 try {
-    $sdkRoot = $env:RTBUS_KEYGEN_ROOT
+    $secureDir = $env:RTBUS_KEYGEN_SECURE_DIR
+    $sdkRoot = [IO.Path]::GetFullPath((Join-Path $secureDir '../..'))
     $outputDir = $env:RTBUS_KEYGEN_OUTPUT
-    if ([string]::IsNullOrWhiteSpace($outputDir)) { $outputDir = $sdkRoot }
+    if ([string]::IsNullOrWhiteSpace($outputDir)) { $outputDir = $secureDir }
     $outputDir = [IO.Path]::GetFullPath($outputDir)
 
     $compiler = $null
@@ -43,7 +44,7 @@ try {
     $workDir = Join-Path ([IO.Path]::GetTempPath()) ('rtbus-keygen-' + [guid]::NewGuid().ToString('N'))
     [void][IO.Directory]::CreateDirectory($workDir)
     $packer = Join-Path $workDir 'application_pack.exe'
-    & $compiler -x c -std=c99 -Wall -Wextra -Werror -O2 -o $packer (Join-Path $sdkRoot 'system/header.c')
+    & $compiler -x c -std=c99 -Wall -Wextra -Werror -O2 -o $packer (Join-Path $sdkRoot 'system/tcc/header.c')
     if ($LASTEXITCODE -ne 0) { throw 'TCC failed to compile the key tool.' }
 
     $privateTemp = Join-Path $workDir 'private.key'

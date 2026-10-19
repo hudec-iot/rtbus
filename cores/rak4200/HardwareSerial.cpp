@@ -34,23 +34,6 @@ static size_t string_length(const char *text) {
     return length;
 }
 
-static size_t serial_print_unsigned(HardwareSerial *serial, unsigned long value) {
-    char digits[10];
-    size_t length = 0;
-    size_t written = 0;
-
-    do {
-        digits[length++] = static_cast<char>('0' + (value % 10));
-        value /= 10;
-    } while (value != 0 && length < sizeof(digits));
-
-    while (length > 0) {
-        written += serial->write(static_cast<uint8_t>(digits[--length]));
-    }
-
-    return written;
-}
-
 void HardwareSerial::begin(unsigned long baud) {
     (void)runtime_arduino_serial_begin(static_cast<uint32_t>(baud));
 }
@@ -124,68 +107,4 @@ size_t HardwareSerial::printf(const char *fmt, ...) {
     return written;
 }
 
-size_t HardwareSerial::print(const char *text) {
-    return write(reinterpret_cast<const uint8_t *>(text), string_length(text));
-}
-
-size_t HardwareSerial::print(int value) {
-    return print(static_cast<long>(value));
-}
-
-size_t HardwareSerial::print(unsigned int value) {
-    return print(static_cast<unsigned long>(value));
-}
-
-size_t HardwareSerial::print(long value) {
-    size_t written = 0;
-    unsigned long magnitude;
-
-    if (value < 0) {
-        written += write(static_cast<uint8_t>('-'));
-        magnitude = 0UL - static_cast<unsigned long>(value);
-    } else {
-        magnitude = static_cast<unsigned long>(value);
-    }
-
-    written += serial_print_unsigned(this, magnitude);
-    return written;
-}
-
-size_t HardwareSerial::print(unsigned long value) {
-    return serial_print_unsigned(this, value);
-}
-
-size_t HardwareSerial::println(const char *text) {
-    size_t written = print(text);
-    written += println();
-    return written;
-}
-
-size_t HardwareSerial::println(int value) {
-    size_t written = print(value);
-    written += println();
-    return written;
-}
-
-size_t HardwareSerial::println(unsigned int value) {
-    size_t written = print(value);
-    written += println();
-    return written;
-}
-
-size_t HardwareSerial::println(long value) {
-    size_t written = print(value);
-    written += println();
-    return written;
-}
-
-size_t HardwareSerial::println(unsigned long value) {
-    size_t written = print(value);
-    written += println();
-    return written;
-}
-
-size_t HardwareSerial::println(void) {
-    static const uint8_t newline[] = {'\r', '\n'};
-    return write(newline, sizeof(newline));
-}
+#include "../../system/arduino/serial_print.cpp"

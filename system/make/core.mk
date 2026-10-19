@@ -33,8 +33,8 @@ LD_SCRIPT ?= $(PROFILE_DIR)/linker.ld
 FRAMEWORK_DIR ?= $(SYSTEM_DIR)/framework
 ABI_INCLUDE ?= $(FRAMEWORK_DIR)/abi/include
 FRAMEWORK_INCLUDE ?= $(FRAMEWORK_DIR)/include
-PACK_SRC ?= $(SYSTEM_DIR)/header.c
-RTBUS_SIGNING_KEY ?= $(REPO_ROOT)/application-p256-private.key
+PACK_SRC ?= $(SYSTEM_DIR)/tcc/header.c
+RTBUS_SIGNING_KEY ?= $(REPO_ROOT)/system/secure/application-p256-private.key
 APPLICATION_VERSION ?= 0.1.0
 APPLICATION_BUILD ?= 0
 
@@ -96,7 +96,7 @@ compile: $(SIGNED_HEX)
 $(BUILD_DIR):
 	@mkdir -p $@
 
-$(PACKER): $(PACK_SRC) $(ABI_INCLUDE)/rtbus_image_format.h $(FRAMEWORK_INCLUDE)/runtime_macro.h $(SYSTEM_DIR)/key/key_store.h $(SYSTEM_DIR)/key/key_store.c $(wildcard $(SYSTEM_DIR)/crypto/*.[ch] $(SYSTEM_DIR)/crypto/micro-ecc/* $(SYSTEM_DIR)/crypto/sha256/*.[ch]) | $(BUILD_DIR)
+$(PACKER): $(PACK_SRC) $(ABI_INCLUDE)/runtime_api_slots.h $(ABI_INCLUDE)/rtbus_image_format.h $(FRAMEWORK_INCLUDE)/runtime_macro.h $(SYSTEM_DIR)/tcc/key_store/key_store.h $(SYSTEM_DIR)/tcc/key_store/key_store.c $(wildcard $(SYSTEM_DIR)/tcc/crypto/*.[ch] $(SYSTEM_DIR)/tcc/crypto/micro-ecc/* $(SYSTEM_DIR)/tcc/crypto/sha256/*.[ch]) | $(BUILD_DIR)
 	$(HOST_CC) -x c -std=c99 -Wall -Wextra -Werror -O2 -o $@ $<
 
 $(OBJECT): $(SRC) | $(BUILD_DIR)

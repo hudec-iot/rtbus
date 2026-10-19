@@ -44,6 +44,8 @@ struct rtbus_runtime_serial_port {
     bool is_cdc;
     bool rx_ready;
     bool prepared;
+    atomic_t tx_flush_waiting;
+    atomic_t tx_flush_status;
     uint8_t rx_buffer[RTBUS_SERIAL_RX_BUFFER_SIZE];
 };
 
@@ -210,6 +212,12 @@ static void rtbus_runtime_serial_irq_callback(const struct device *dev,
     while (uart_irq_update(port->dev) != 0 && uart_irq_rx_ready(port->dev)) {
         rtbus_runtime_serial_drain_fifo(port);
     }
+    if (atomic_get(&port->tx_flush_waiting) != 0) {
+        int complete = uart_irq_tx_complete(port->dev);
+        uart_irq_tx_disable(port->dev);
+        atomic_set(&port->tx_flush_status, complete);
+        atomic_set(&port->tx_flush_waiting, 0);
+    }
 }
 
 static void rtbus_runtime_serial_cdc_callback(const struct device *dev,
@@ -251,7 +259,7 @@ static int rtbus_runtime_serial_prepare_rx(
 }
 
 static int rtbus_runtime_serial_configure(
-    struct rtbus_runtime_serial_port *serial_port, uint32_t baud)
+    struct rtbus_runtime_serial_port *serial_port, uint32_t baud, uint32_t format)
 {
     struct uart_config config;
     bool rx_was_enabled;
@@ -265,16 +273,30 @@ static int rtbus_runtime_serial_configure(
         return -ENODEV;
     }
 
-    ret = uart_config_get(serial_port->dev, &config);
-    if (ret != 0) {
-        config.baudrate = baud;
-        config.parity = UART_CFG_PARITY_NONE;
-        config.stop_bits = UART_CFG_STOP_BITS_1;
-        config.data_bits = UART_CFG_DATA_BITS_8;
-        config.flow_ctrl = UART_CFG_FLOW_CTRL_NONE;
-    } else {
-        config.baudrate = baud;
+    config.baudrate = baud;
+    config.flow_ctrl = UART_CFG_FLOW_CTRL_NONE;
+    switch (format & 0xfU) {
+    case 1: config.parity = UART_CFG_PARITY_EVEN; break;
+    case 2: config.parity = UART_CFG_PARITY_ODD; break;
+    case 3: config.parity = UART_CFG_PARITY_NONE; break;
+    case 4: config.parity = UART_CFG_PARITY_MARK; break;
+    case 5: config.parity = UART_CFG_PARITY_SPACE; break;
+    default: return -EINVAL;
     }
+    switch (format & 0xf0U) {
+    case 0x10: config.stop_bits = UART_CFG_STOP_BITS_1; break;
+    case 0x20: config.stop_bits = UART_CFG_STOP_BITS_1_5; break;
+    case 0x30: config.stop_bits = UART_CFG_STOP_BITS_2; break;
+    default: return -EINVAL;
+    }
+    switch (format & 0xf00U) {
+    case 0x100: config.data_bits = UART_CFG_DATA_BITS_5; break;
+    case 0x200: config.data_bits = UART_CFG_DATA_BITS_6; break;
+    case 0x300: config.data_bits = UART_CFG_DATA_BITS_7; break;
+    case 0x400: config.data_bits = UART_CFG_DATA_BITS_8; break;
+    default: return -EINVAL;
+    }
+    if (format & ~0xfffU) { return -EINVAL; }
 
     rx_was_enabled = !serial_port->is_cdc && serial_port->rx_ready;
     if (rx_was_enabled) {
@@ -294,7 +316,7 @@ static int rtbus_runtime_serial_configure(
     return ret;
 }
 
-int rtbus_runtime_serial_begin(uint32_t port, uint32_t baud)
+static int rtbus_runtime_serial_begin_format(uint32_t port, uint32_t baud, uint32_t format)
 {
     struct rtbus_runtime_serial_port *serial_port =
         rtbus_runtime_serial_port(port);
@@ -304,7 +326,7 @@ int rtbus_runtime_serial_begin(uint32_t port, uint32_t baud)
         return -EINVAL;
     }
 
-    ret = rtbus_runtime_serial_configure(serial_port, baud);
+    ret = rtbus_runtime_serial_configure(serial_port, baud, format);
     if (ret != 0) {
         return ret;
     }
@@ -321,6 +343,11 @@ int rtbus_runtime_serial_begin(uint32_t port, uint32_t baud)
     serial_port->prepared = true;
 
     return 0;
+}
+
+int rtbus_runtime_serial_begin(uint32_t port, uint32_t baud)
+{
+    return rtbus_runtime_serial_begin_format(port, baud, 0x413U);
 }
 
 int rtbus_runtime_serial_flush_rx(uint32_t port)
@@ -348,6 +375,53 @@ static bool rtbus_runtime_serial_tx_ready(
 
     return uart_line_ctrl_get(serial_port->dev, UART_LINE_CTRL_DTR, &dtr) == 0 &&
            dtr != 0U;
+}
+
+int rtbus_runtime_serial_control(uint32_t port, uint32_t operation,
+                                uint32_t baud, uint32_t format)
+{
+    struct rtbus_runtime_serial_port *p = rtbus_runtime_serial_port(port);
+    if (p == NULL || p->dev == NULL || !device_is_ready(p->dev)) { return -ENODEV; }
+    switch (operation) {
+    case RTBUS_SERIAL_CONTROL_BEGIN:
+        return rtbus_runtime_serial_begin_format(port, baud, format);
+    case RTBUS_SERIAL_CONTROL_AVAILABLE: {
+        k_spinlock_key_t key = k_spin_lock(&p->lock);
+        size_t count = (p->rx_head + sizeof(p->rx_buffer) - p->rx_tail) % sizeof(p->rx_buffer);
+        k_spin_unlock(&p->lock, key);
+        return (int)count;
+    }
+    case RTBUS_SERIAL_CONTROL_END:
+        if (p->rx_ready) { uart_irq_rx_disable(p->dev); }
+        p->rx_ready = false;
+        p->prepared = false;
+        rtbus_runtime_serial_rx_clear(p);
+        return 0;
+    case RTBUS_SERIAL_CONTROL_READY:
+        return p->prepared && rtbus_runtime_serial_tx_ready(p);
+    case RTBUS_SERIAL_CONTROL_FLUSH:
+        if (!p->prepared) { return -ENODEV; }
+        // CDC does not expose a portable drain operation through this UART API.
+        if (p->is_cdc) { return -ENOTSUP; }
+        int64_t deadline = k_uptime_get() + 1000;
+        while (k_uptime_get() < deadline) {
+            atomic_set(&p->tx_flush_status, 0);
+            atomic_set(&p->tx_flush_waiting, 1);
+            uart_irq_tx_enable(p->dev);
+            while (atomic_get(&p->tx_flush_waiting) != 0 && k_uptime_get() < deadline) {
+                k_sleep(K_MSEC(1));
+            }
+            int status = atomic_get(&p->tx_flush_status);
+            if (status > 0) { return 0; }
+            if (status < 0) { return status; }
+            k_sleep(K_MSEC(1));
+        }
+        uart_irq_tx_disable(p->dev);
+        atomic_set(&p->tx_flush_waiting, 0);
+        return -ETIMEDOUT;
+    default:
+        return -EINVAL;
+    }
 }
 
 size_t rtbus_runtime_serial_write(uint32_t port, const uint8_t *data,

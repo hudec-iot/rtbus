@@ -1,5 +1,17 @@
 # RTDuo Platform
 
+Extension source lives in `.vscode/extensions/rtduo-platform/`, alongside the
+repository's VS Code settings. This directory does not automatically install
+the extension into VS Code.
+
+The workspace recommendation in `.vscode/extensions.json` points to
+`rtbus.rtduo-platform`, matching this extension's publisher and name. Installing
+from that recommendation requires a Marketplace release under that ID. The
+recommendation does not load this local source directory or install host tools.
+After the extension is installed, its commands check for Docker/Podman and pull
+the builder image when needed. A complete environment installation wizard is
+not implemented yet.
+
 This extension uses the published RTDuo builder image from
 [GitHub Packages](https://github.com/orgs/hudec-iot/packages/container/package/rtbus-zephyr).
 

@@ -5,6 +5,7 @@
 #include "native_board.h"
 
 #include <zephyr/device.h>
+#include <zephyr/irq.h>
 #include <zephyr/drivers/uart.h>
 
 #include <rtbus/runtime_serial.h>
@@ -120,6 +121,91 @@ static uint32_t native_api_millis(void)
     return k_uptime_get_32();
 }
 
+/* Only the native application thread calls this pair. Repeated disable calls
+ * are idempotent; restore preserves the mask from the first disable call.
+ * The application must not sleep or call blocking APIs while IRQs are locked.
+ */
+static unsigned int native_irq_key;
+static bool native_irqs_disabled;
+
+static void native_api_irq_disable(void)
+{
+    unsigned int key = irq_lock();
+
+    if (!native_irqs_disabled) {
+        native_irq_key = key;
+        native_irqs_disabled = true;
+    }
+}
+
+static void native_api_irq_restore(void)
+{
+    if (native_irqs_disabled) {
+        unsigned int key = native_irq_key;
+
+        native_irqs_disabled = false;
+        irq_unlock(key);
+    }
+}
+
+static void native_api_delay_us(uint32_t us)
+{
+    k_busy_wait(us);
+}
+
+/* Sample the 32-bit hardware clock at least once per second so its wrap
+ * can be extended without consuming application RAM. Current board clocks
+ * wrap more slowly than this interval. The accumulator survives app reloads.
+ */
+static uint32_t native_clock_last;
+static uint64_t native_clock_cycles;
+static uint64_t native_clock_origin_us;
+static bool native_clock_started;
+static void native_clock_sample(struct k_timer *timer)
+{
+    ARG_UNUSED(timer);
+    unsigned int key = irq_lock();
+    uint32_t now = k_cycle_get_32();
+    native_clock_cycles += (uint32_t)(now - native_clock_last);
+    native_clock_last = now;
+    irq_unlock(key);
+}
+K_TIMER_DEFINE(native_clock_timer, native_clock_sample, NULL);
+
+static uint32_t native_api_micros(void)
+{
+    unsigned int key = irq_lock();
+    if (!native_clock_started) {
+        native_clock_last = k_cycle_get_32();
+        native_clock_origin_us = k_ticks_to_us_floor64(k_uptime_ticks());
+        native_clock_started = true;
+        k_timer_start(&native_clock_timer, K_SECONDS(1), K_SECONDS(1));
+    }
+    uint32_t now = k_cycle_get_32();
+    native_clock_cycles += (uint32_t)(now - native_clock_last);
+    native_clock_last = now;
+    uint64_t cycles = native_clock_cycles;
+    uint64_t origin = native_clock_origin_us;
+    irq_unlock(key);
+    return (uint32_t)(origin + k_cyc_to_us_floor64(cycles));
+}
+
+static void native_api_yield(void)
+{
+    native_service_dispatch_events();
+    if (atomic_get(&native_patch_handoff) != 0) { k_sleep(K_FOREVER); }
+    k_yield();
+}
+
+static int native_api_serial_control(uint32_t port, uint32_t operation,
+                                      uint32_t baud, uint32_t format)
+{
+    atomic_inc(&native_api_busy);
+    int result = rtbus_runtime_serial_control(port, operation, baud, format);
+    atomic_dec(&native_api_busy);
+    return result;
+}
+
 static int native_gpio_resolve(uint32_t pin,
                                const struct gpio_dt_spec **entry)
 {
@@ -165,6 +251,9 @@ static int native_api_gpio_configure(uint32_t pin, uint32_t mode)
     case RUNTIME_GPIO_MODE_INPUT_PULLDOWN:
         flags = GPIO_INPUT | GPIO_PULL_DOWN;
         break;
+    case RUNTIME_GPIO_MODE_OUTPUT_OPENDRAIN:
+        flags = GPIO_OUTPUT | GPIO_OPEN_DRAIN;
+        break;
     default:
         return -EINVAL;
     }
@@ -196,6 +285,86 @@ static int native_api_gpio_read(uint32_t pin)
     }
 
     return gpio_pin_get_dt(entry);
+}
+
+#define NATIVE_GPIO_IRQ_COUNT DT_CHILD_NUM_STATUS_OKAY(DT_NODELABEL(rtbus_native_gpio))
+struct native_gpio_irq {
+    struct gpio_callback gpio_callback;
+    const struct gpio_dt_spec *pin;
+    rtbus_gpio_irq_callback_t callback;
+    void *argument;
+};
+static struct native_gpio_irq native_gpio_irqs[NATIVE_GPIO_IRQ_COUNT];
+
+static void native_gpio_irq_handler(const struct device *dev,
+                                     struct gpio_callback *callback,
+                                     gpio_port_pins_t pins)
+{
+    ARG_UNUSED(dev);
+    ARG_UNUSED(pins);
+    struct native_gpio_irq *entry = CONTAINER_OF(callback, struct native_gpio_irq, gpio_callback);
+    if (entry->callback != NULL && atomic_get(&native_patch_handoff) == 0) {
+        // Arduino attachInterrupt callbacks run in interrupt context.
+        entry->callback(entry->argument);
+    }
+}
+
+static int native_gpio_irq_remove(struct native_gpio_irq *entry)
+{
+    if (entry->pin == NULL) { return 0; }
+    entry->callback = NULL;
+    int result = gpio_pin_interrupt_configure_dt(entry->pin, GPIO_INT_DISABLE);
+    int removed = gpio_remove_callback(entry->pin->port, &entry->gpio_callback);
+    entry->pin = NULL;
+    entry->argument = NULL;
+    return result != 0 ? result : removed;
+}
+
+static void native_gpio_irq_clear_all(void)
+{
+    for (size_t i = 0; i < ARRAY_SIZE(native_gpio_irqs); ++i) {
+        (void)native_gpio_irq_remove(&native_gpio_irqs[i]);
+    }
+}
+
+static int native_api_gpio_interrupt(uint32_t pin, uint32_t mode,
+                                      rtbus_gpio_irq_callback_t callback, void *argument)
+{
+    const struct gpio_dt_spec *spec;
+    int result = native_gpio_resolve(pin, &spec);
+    if (result != 0) { return result; }
+    gpio_flags_t flags;
+    switch (mode) {
+    case RTBUS_GPIO_IRQ_DETACH: flags = GPIO_INT_DISABLE; break;
+    case RTBUS_GPIO_IRQ_LOW: flags = GPIO_INT_LEVEL_LOW; break;
+    case RTBUS_GPIO_IRQ_HIGH: flags = GPIO_INT_LEVEL_HIGH; break;
+    case RTBUS_GPIO_IRQ_CHANGE: flags = GPIO_INT_EDGE_BOTH; break;
+    case RTBUS_GPIO_IRQ_FALLING: flags = GPIO_INT_EDGE_FALLING; break;
+    case RTBUS_GPIO_IRQ_RISING: flags = GPIO_INT_EDGE_RISING; break;
+    default: return -EINVAL;
+    }
+    if (mode != RTBUS_GPIO_IRQ_DETACH && callback == NULL) { return -EINVAL; }
+    if (atomic_get(&native_patch_handoff) != 0 && mode != RTBUS_GPIO_IRQ_DETACH) { return -EBUSY; }
+    struct native_gpio_irq *entry = NULL;
+    for (size_t i = 0; i < ARRAY_SIZE(native_gpio_irqs); ++i) {
+        if (native_gpio_irqs[i].pin == spec) {
+            entry = &native_gpio_irqs[i];
+            result = native_gpio_irq_remove(entry);
+            if (result != 0) { return result; }
+            break;
+        }
+        if (entry == NULL && native_gpio_irqs[i].pin == NULL) { entry = &native_gpio_irqs[i]; }
+    }
+    if (mode == RTBUS_GPIO_IRQ_DETACH) { return 0; }
+    if (entry == NULL) { return -ENOMEM; }
+    entry->pin = spec;
+    entry->callback = callback;
+    entry->argument = argument;
+    gpio_init_callback(&entry->gpio_callback, native_gpio_irq_handler, BIT(spec->pin));
+    result = gpio_add_callback(spec->port, &entry->gpio_callback);
+    if (result == 0) { result = gpio_pin_interrupt_configure_dt(spec, flags); }
+    if (result != 0) { (void)native_gpio_irq_remove(entry); }
+    return result;
 }
 
 static void native_api_rtt_vprintf(const char *fmt, va_list args)

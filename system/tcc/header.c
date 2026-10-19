@@ -13,9 +13,9 @@
 #include <sys/stat.h>
 #endif
 
-#include "framework/abi/include/runtime_api_slots.h"
+#include "../framework/abi/include/runtime_api_slots.h"
 
-#include "framework/abi/include/rtbus_image_format.h"
+#include "../framework/abi/include/rtbus_image_format.h"
 
 #define COMPONENT_MAGIC RTBUS_IMAGE_MAGIC
 #define HEADER_VERSION RTBUS_IMAGE_HEADER_VERSION
@@ -23,7 +23,7 @@
 #define SIGNATURE_SIZE RTBUS_IMAGE_P256_SIGNATURE_SIZE
 
 #include "crypto/signing.c"
-#include "key/key_store.c"
+#include "key_store/key_store.c"
 #define IHEX_RECORD_DATA 0x00U
 #define IHEX_RECORD_EOF 0x01U
 #define IHEX_RECORD_EXT_LINEAR_ADDR 0x04U

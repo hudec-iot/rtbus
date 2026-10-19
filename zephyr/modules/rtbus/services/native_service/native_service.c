@@ -237,6 +237,7 @@ void native_service_request_stop_for_upgrade(void)
 
 static void native_service_force_stop_thread(void)
 {
+    //native_gpio_irq_clear_all();   
     /*
      * Force stop is intentionally limited to the native thread. Runtime-owned
      * queues/semaphores are reset here so APP and PATCH upgrades can take over

@@ -1,4 +1,4 @@
 /* SPDX-License-Identifier: MPL-2.0 */
 #pragma once
 
-#include <runtime_api.h>
+#include "../../system/arduino/RTDuo.h"
