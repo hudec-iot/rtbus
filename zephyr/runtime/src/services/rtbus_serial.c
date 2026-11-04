@@ -85,7 +85,9 @@ static void rtbus_runtime_serial_rx_put(struct rtbus_runtime_serial_port *port,
 
     next_head = (port->rx_head + 1U) % sizeof(port->rx_buffer);
     if (next_head == port->rx_tail) {
-        port->rx_tail = (port->rx_tail + 1U) % sizeof(port->rx_buffer);
+        /* Preserve unread bytes, as Arduino RX buffers do on overflow. */
+        k_spin_unlock(&port->lock, key);
+        return;
     }
 
     port->rx_buffer[port->rx_head] = byte;
@@ -140,7 +142,28 @@ static void rtbus_runtime_serial_submit_control_line(void)
 
 static bool rtbus_runtime_serial_route_port0_byte(uint8_t byte)
 {
+    static const char header[] = "@RTBUS:";
+
+    if (!IS_ENABLED(CONFIG_RTBUS_RUNTIME_SERIAL_CLI_MUX)) {
+        return true;
+    }
+
     if (rtbus_runtime_serial_control_active) {
+        /* Until the complete reserved header matches, these are app bytes.
+         * Replay a mismatched prefix before passing the current byte through.
+         */
+        if (rtbus_runtime_serial_control_line_len < sizeof(header) - 1U &&
+            byte != (uint8_t)header[rtbus_runtime_serial_control_line_len]) {
+            for (size_t i = 0; i < rtbus_runtime_serial_control_line_len; ++i) {
+                rtbus_runtime_serial_rx_put(
+                    &rtbus_runtime_serial_ports[RTBUS_SERIAL_PORT_0],
+                    (uint8_t)rtbus_runtime_serial_control_line[i]);
+            }
+            rtbus_runtime_serial_control_active = false;
+            rtbus_runtime_serial_control_line_len = 0U;
+            rtbus_runtime_serial_port0_line_start = byte == '\r' || byte == '\n';
+            return true;
+        }
         if (byte == '\r' || byte == '\n') {
             rtbus_runtime_serial_submit_control_line();
             return false;
@@ -392,9 +415,13 @@ int rtbus_runtime_serial_control(uint32_t port, uint32_t operation,
         return (int)count;
     }
     case RTBUS_SERIAL_CONTROL_END:
-        if (p->rx_ready) { uart_irq_rx_disable(p->dev); }
-        p->rx_ready = false;
-        p->prepared = false;
+        /* Keep the maintenance channel usable after application Serial.end(). */
+        if (port != RTBUS_SERIAL_PORT_0 ||
+            !IS_ENABLED(CONFIG_RTBUS_RUNTIME_SERIAL_CLI_MUX)) {
+            if (p->rx_ready) { uart_irq_rx_disable(p->dev); }
+            p->rx_ready = false;
+            p->prepared = false;
+        }
         rtbus_runtime_serial_rx_clear(p);
         return 0;
     case RTBUS_SERIAL_CONTROL_READY:

@@ -127,6 +127,10 @@ K_EVENT_DEFINE(native_wake_event);
 K_SEM_DEFINE(native_result_sem, 0, 1);
 
 static runtime_event_callback_t native_event_callback;
+static bool native_irqs_disabled;
+static bool native_events_dispatching;
+
+static void native_gpio_irq_dispatch(void);
 
 int native_service_emit_event(uint16_t group, uint16_t tag,
                                    const void *value, uint16_t len)
@@ -162,11 +166,20 @@ static void native_service_dispatch_events(void)
 {
     struct runtime_event_tlv event;
 
-    while (k_msgq_get(&native_event_msgq, &event, K_NO_WAIT) == 0) {
+    if (native_irqs_disabled || native_events_dispatching ||
+        atomic_get(&native_patch_handoff) != 0) {
+        return;
+    }
+
+    native_events_dispatching = true;
+    native_gpio_irq_dispatch();
+    while (!native_irqs_disabled && atomic_get(&native_patch_handoff) == 0 &&
+           k_msgq_get(&native_event_msgq, &event, K_NO_WAIT) == 0) {
         if (native_event_callback != NULL) {
             native_event_callback(&event);
         }
     }
+    native_events_dispatching = false;
 }
 
 /*
@@ -237,7 +250,6 @@ void native_service_request_stop_for_upgrade(void)
 
 static void native_service_force_stop_thread(void)
 {
-    //native_gpio_irq_clear_all();   
     /*
      * Force stop is intentionally limited to the native thread. Runtime-owned
      * queues/semaphores are reset here so APP and PATCH upgrades can take over
@@ -247,6 +259,11 @@ static void native_service_force_stop_thread(void)
         k_thread_abort(native_thread_id);
         native_thread_id = NULL;
     }
+
+    /* Remove callbacks into the old image before application RAM is reused. */
+    native_gpio_irq_reset();
+    native_irqs_disabled = false;
+    native_events_dispatching = false;
 
     native_entry = NULL;
     native_event_callback = NULL;

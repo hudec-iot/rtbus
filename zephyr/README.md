@@ -23,3 +23,24 @@ for board identity and source mapping.
 
 See [Application signing](application-signing.md) for P-256 application packaging,
 runtime verification, keys, and initial resource budgets.
+
+## Native application GPIO interrupts
+
+`attachInterrupt()` and `attachInterruptParam()` register runtime-owned GPIO
+interrupts. The hardware ISR only marks the pin pending and wakes the native
+thread; application callbacks execute in that thread at event dispatch points
+(delay, yield, service-result waits, and native entry boundaries). A busy
+application must call `yield()` to allow dispatch. This is deferred notification,
+not preemptive execution of application code in a software IRQ.
+
+`noInterrupts()` pauses application event dispatch and `interrupts()` resumes
+it. Neither masks kernel, BLE, USB or other runtime hardware interrupts.
+Repeated GPIO triggers for the same pin coalesce into a single pending callback;
+this interface does not preserve every edge or its timestamp. Callbacks do not
+recursively dispatch other callbacks. Detaching a pin clears its pending event,
+and stopping the native image removes its GPIO registrations before RAM reuse.
+
+The API table slots and function signatures are unchanged. Callback context and
+interrupt-control semantics differ from traditional Arduino ISR callbacks.
+Code that needs uninterrupted bit-banging or exact edge timing must use an
+appropriate runtime/hardware service instead of relying on `noInterrupts()`.

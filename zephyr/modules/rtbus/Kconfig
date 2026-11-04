@@ -52,13 +52,14 @@ config RTBUS_DIAGNOSTICS_SERVICE
       do not need built-in diagnostics.
 
 config RTBUS_RUNTIME_TIMEOUT_MAX_MS
-    int "Maximum RTBus runtime wait timeout in milliseconds"
+    int "RTBus process error retry interval in milliseconds"
     default 100
     range 1 60000
     depends on RTBUS_NATIVE_SERVICE
     help
-      Maximum timeout passed to the RTBus runtime event wait. This is also used
-      when RTBus has no pending delayed event.
+      Retry interval after process errors. When idle, the runtime waits until
+      the next delayed event, or indefinitely when no work is scheduled.
+      Registered POLL tasks keep the runtime active.
 
 config RTBUS_RUNTIME_THREAD_STACK_SIZE
     int "RTBus runtime thread stack size"
@@ -78,6 +79,18 @@ config RTBUS_RUNTIME_THREAD_PRIORITY
     depends on RTBUS_NATIVE_SERVICE
     help
       Preemptive Zephyr priority used by the RTBus runtime thread.
+
+config RTBUS_RUNTIME_SERIAL_CLI_MUX
+    bool "Share application Serial with the RTBus maintenance CLI"
+    default y
+    depends on RTBUS_NATIVE_SERVICE
+    help
+      Reserve lines starting with @RTBUS: on Serial for maintenance commands
+      and application uploads. Other lines, including other @ prefixes, are
+      delivered to the application. An incomplete matching header is held
+      until a subsequent byte distinguishes it from a maintenance command.
+      Disable for a fully transparent application byte stream; in-band CLI
+      uploads will then be unavailable. Serial1 is always transparent.
 
 config RTBUS_RUNTIME_SERIAL_RX_BUFFER_SIZE
     int "Runtime serial RX buffer size"

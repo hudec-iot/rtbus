@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: MPL-2.0 */
-// #include "../../../../.project/niin/orp/project.ino"
-// #include "../../../../.project/rakwireless/nbiot/project.ino"
-// #include "../../../../.project/ble_perpheral/sample.ino"
+// #include "../../../../../../../.project/niin/orp/project.ino"
+// #include "../../../../../../../.project/rakwireless/nbiot/project.ino"
+// #include "../../../../../../../.project/ble_perpheral/sample.ino"
 // #include "../../../../../../../.project/canbus/sample.ino"
-#include "../../../../../../../.project/hx711/sample.ino"
+// #include "../../../../../../../.project/hx711/sample.ino"
 
 #ifndef PROJECT_ALONE
 

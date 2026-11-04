@@ -47,7 +47,13 @@ int rtbus_post_delay(uint8_t task_id, uint32_t ctx_id, const void *payload,
 void rtbus_post_after(uint8_t task_id, uint32_t ctx_id,
                          const void *payload, uint32_t payload_len);
 int rtbus_process_async_posts(void);
+/* Runtime-thread only, after draining rtbus_process(): milliseconds until
+ * the next delayed event, -1 when there is no scheduled work.
+ */
 int32_t rtbus_next_timeout_ms(void);
+/* Runtime-thread only: >0 means call again, 0 means idle, <0 means error.
+ * Registered POLL tasks keep the runtime active.
+ */
 int rtbus_process(void);
 
 #ifdef __cplusplus

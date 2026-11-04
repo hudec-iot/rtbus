@@ -192,17 +192,15 @@ static int emos_process_queued_event(uint8_t pool_id)
             task_id = p_ctx->task_id;
             this_task = emos_entry_find(task_id);
             if (this_task == NULL) {
-                void **head = (void **)&task_tbl[task_priority];
-
-                linklist_remove(pool_id, head, emos_proc);
-                return 1;
+                goto goto_remove;
             }
 
             if(this_task->task_entry != NULL)
             {
                 (void)this_task->task_entry(p_ctx);
             }
-
+            
+        goto_remove:
             void **head = (void **)&task_tbl[task_priority];
 
             {
@@ -255,7 +253,7 @@ __weak int emos_process_async_posts(void)
 }
 #endif
 
-EMOS_CORE_API int emos_process( void )
+EMOS_CORE_API int emos_process(void)
 {
     uint8_t pool_id = POOL_ID;
     int ret;

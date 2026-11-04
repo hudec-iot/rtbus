@@ -6,3 +6,5 @@ ZEPHYR_BOARD ?= rak4631
 ZEPHYR_BOARD_SOURCE ?= upstream
 ZEPHYR_SOC ?= nrf52840
 JLINK_TARGET ?= nRF52840_xxAA
+# RTT control blocks can be placed anywhere in the nRF52840's 256 KiB SRAM.
+JLINK_RTT_SEARCH_RANGES ?= 0x20000000 0x40000

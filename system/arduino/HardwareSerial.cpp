@@ -61,6 +61,7 @@ void HardwareSerial::begin(unsigned long baud)
     instance->peeked = -1;
     lastError_ = runtime_arduino_serial_begin(instance->port, (uint32_t)baud);
     started_ = lastError_ == 0;
+    if (started_) { clearWriteError(); }
 }
 
 void HardwareSerial::begin(unsigned long baud, uint16_t config)
@@ -69,6 +70,7 @@ void HardwareSerial::begin(unsigned long baud, uint16_t config)
     instance->peeked = -1;
     lastError_ = rtbus_serial_control(instance->port, RTBUS_SERIAL_CONTROL_BEGIN, (uint32_t)baud, config);
     started_ = lastError_ == 0;
+    if (started_) { clearWriteError(); }
 }
 
 void HardwareSerial::end()
@@ -83,7 +85,9 @@ void HardwareSerial::end()
 
 void HardwareSerial::flush()
 {
+    if (!started_) { return; }
     lastError_ = rtbus_serial_control((uint32_t)port_, RTBUS_SERIAL_CONTROL_FLUSH, 0, 0);
+    if (lastError_ != 0) { setWriteError(); }
 }
 
 int HardwareSerial::availableForWrite()

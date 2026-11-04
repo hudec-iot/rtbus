@@ -2,6 +2,7 @@
 #include "WString.h"
 #include "Print.h"
 #include <limits.h>
+#include <float.h>
 
 // Application-owned storage, linked only when String allocation is used.
 // Configure through compiler flags, not by borrowing the runtime's heap.
@@ -79,7 +80,12 @@ String &String::operator=(String &&other) noexcept
 }
 String &String::operator=(const String &other)
 {
-    if (this != &other) { operator=(other ? other.c_str() : nullptr); }
+    if (this != &other) {
+        if (!other || !reserve(other.length_)) { invalidate(); return *this; }
+        for (unsigned int i = 0; i < other.length_; ++i) { buffer_[i] = other.buffer_[i]; }
+        length_ = other.length_;
+        buffer_[length_] = 0;
+    }
     return *this;
 }
 String &String::operator=(const char *text)
@@ -124,8 +130,53 @@ String::String(int value, unsigned char base) { reserve(32); StringOutput sink(*
 String::String(unsigned int value, unsigned char base) { reserve(32); StringOutput sink(*this); sink.print(value, base); if (sink.failed()) { invalidate(); } }
 String::String(long value, unsigned char base) { reserve(32); StringOutput sink(*this); sink.print(value, base); if (sink.failed()) { invalidate(); } }
 String::String(unsigned long value, unsigned char base) { reserve(32); StringOutput sink(*this); sink.print(value, base); if (sink.failed()) { invalidate(); } }
-String::String(float value, unsigned char digits) { reserve(16U + digits); StringOutput sink(*this); sink.print((double)value, digits); if (sink.failed()) { invalidate(); } }
-String::String(double value, unsigned char digits) { reserve(16U + digits); StringOutput sink(*this); sink.print((double)value, digits); if (sink.failed()) { invalidate(); } }
+// String uses fixed decimal conversion, independently of Print's 32-bit
+// integer limit. Keep formatting in application RAM without libc or libm.
+String::String(float value, unsigned char digits) : String((double)value, digits) {}
+String::String(double value, unsigned char digits)
+{
+    if (__builtin_isnan(value)) { operator=("nan"); return; }
+    bool negative = __builtin_signbit(value);
+    if (__builtin_isinf(value)) { operator=(negative ? "-inf" : "inf"); return; }
+    if (digits > 10) { digits = 10; }
+    if (negative) { value = -value; }
+
+    int exponent = 0;
+    if (value != 0) {
+        while (value >= 10) { value /= 10; ++exponent; }
+        while (value < 1) { value *= 10; --exponent; }
+    }
+    // Round at the requested fractional position in the normalized value.
+    int places = exponent + digits;
+    if (places >= 0) {
+        double rounding = 0.5;
+        for (int i = 0; i < places; ++i) { rounding *= 0.1; }
+        value += rounding;
+        if (value >= 10) { value = 1; ++exponent; }
+    } else if (places == -1 && value >= 5) {
+        value = 1;
+        exponent = -(int)digits;
+    } else {
+        value = 0;
+        exponent = 0;
+    }
+
+    char text[DBL_MAX_10_EXP + 16];
+    unsigned int length = 0;
+    if (negative) { text[length++] = '-'; }
+    int first = exponent > 0 ? exponent : 0;
+    for (int position = first; position >= -(int)digits; --position) {
+        if (position == -1) { text[length++] = '.'; }
+        unsigned int digit = 0;
+        if (position <= exponent) {
+            digit = (unsigned int)value;
+            if (digit > 9) { digit = 9; }
+            value = (value - digit) * 10;
+        }
+        text[length++] = (char)('0' + digit);
+    }
+    if (!concat(text, length)) { invalidate(); }
+}
 bool String::concat(unsigned char value) { String text(value); return concat(text); }
 bool String::concat(int value) { String text(value); return concat(text); }
 bool String::concat(unsigned int value) { String text(value); return concat(text); }

@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 void runtime_event_signal(void);
-int runtime_event_wait(uint32_t timeout_ms);
+/* Negative timeout waits indefinitely; zero checks without blocking. */
+int runtime_event_wait(int32_t timeout_ms);
 
 #endif /* RTBUS_RUNTIME_EVENT_H_ */

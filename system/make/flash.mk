@@ -1,7 +1,10 @@
 # SPDX-License-Identifier: MPL-2.0
 
 JLINK_DOCKER_NETWORK ?= host
-JLINK_RTT_EXE ?= /opt/segger/jlink/JLinkRTTLoggerExe
+JLINK_RTT_LIBRARY ?= /opt/segger/jlink/libjlinkarm.so
+JLINK_RTT_SEARCH_RANGES ?= 0x20000000 0x10000
+# Optional exact address from the map of the firmware currently on the board.
+JLINK_RTT_ADDRESS ?=
 
 define jlink_run
 	$(DOCKER_RUN_BASE) --network=$(JLINK_DOCKER_NETWORK) $(DOCKER_IMAGE) \
@@ -22,7 +25,7 @@ jlink.erase: docker.image
 .PHONY: jlink.rttlog
 jlink.rttlog: docker.image
 	$(DOCKER_RUN_BASE) --network=$(JLINK_DOCKER_NETWORK) $(DOCKER_IMAGE) \
-		"$(JLINK_RTT_EXE)" -Device "$(JLINK_TARGET)" -If "$(JLINK_IF)" -Speed "$(JLINK_SPEED)" -IP "$(JLINK_IP)" -RTTSearchRanges "20000000 10000" -RTTChannel 0 /dev/stdout
+		python3 tools/scripts/jlink_rtt.py --device "$(JLINK_TARGET)" --interface "$(JLINK_IF)" --speed "$(JLINK_SPEED)" --ip "$(JLINK_IP)" --library "$(JLINK_RTT_LIBRARY)" --map "$(RUNTIME_BUILD_DIR)/zephyr/zephyr.map" --search-ranges "$(JLINK_RTT_SEARCH_RANGES)" $(if $(strip $(JLINK_RTT_ADDRESS)),--address "$(JLINK_RTT_ADDRESS)")
 
 .PHONY: jlink.download.runtime
 jlink.download.runtime: docker.image

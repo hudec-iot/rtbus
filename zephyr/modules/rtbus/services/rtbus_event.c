@@ -19,9 +19,10 @@ void runtime_event_signal(void)
     k_sem_give(&runtime_event_sem);
 }
 
-int runtime_event_wait(uint32_t timeout_ms)
+int runtime_event_wait(int32_t timeout_ms)
 {
-    return k_sem_take(&runtime_event_sem, K_MSEC(timeout_ms));
+    return k_sem_take(&runtime_event_sem,
+                      timeout_ms < 0 ? K_FOREVER : K_MSEC(timeout_ms));
 }
 
 __strong void rtbus_post_after(uint8_t task_id, uint32_t ctx_id,

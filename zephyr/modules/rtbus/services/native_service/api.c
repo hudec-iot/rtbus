@@ -6,25 +6,8 @@
 
 #include <zephyr/device.h>
 #include <zephyr/irq.h>
-#include <zephyr/drivers/uart.h>
 
 #include <rtbus/runtime_serial.h>
-
-#if !DT_HAS_CHOSEN(rtbus_application_serial)
-#error "rtbus,application-serial is required by native Serial API"
-#endif
-
-#define NATIVE_SERIAL_NODE DT_CHOSEN(rtbus_application_serial)
-
-static const struct device *const native_serial_dev =
-    DEVICE_DT_GET(NATIVE_SERIAL_NODE);
-
-#if DT_HAS_CHOSEN(rtbus_application_serial1)
-#define NATIVE_SERIAL1_NODE DT_CHOSEN(rtbus_application_serial1)
-
-static const struct device *const native_serial1_dev =
-    DEVICE_DT_GET(NATIVE_SERIAL1_NODE);
-#endif
 
 static int native_api_rtbus_post(uint8_t task_id, uint32_t ctx_id,
                                  const void *payload, uint32_t payload_len)
@@ -72,11 +55,27 @@ out:
 
 static int native_api_result_wait(uint32_t timeout_ms)
 {
-    if (timeout_ms == RTBUS_WAIT_FOREVER) {
-        return k_sem_take(&native_result_sem, K_FOREVER);
+    bool forever = timeout_ms == RTBUS_WAIT_FOREVER;
+    int64_t deadline = k_uptime_get() + timeout_ms;
+
+    while (k_sem_take(&native_result_sem, K_NO_WAIT) != 0) {
+        int64_t remaining_ms = deadline - k_uptime_get();
+        uint32_t events;
+
+        if (atomic_get(&native_patch_handoff) != 0) {
+            return -EINTR;
+        }
+        if (!forever && remaining_ms <= 0) {
+            return -EAGAIN;
+        }
+
+        events = k_event_wait(&native_wake_event, NATIVE_WAKE_ALL, false,
+                             forever ? K_FOREVER : K_MSEC(remaining_ms));
+        (void)k_event_clear(&native_wake_event, events);
+        native_service_dispatch_events();
     }
 
-    return k_sem_take(&native_result_sem, K_MSEC(timeout_ms));
+    return 0;
 }
 
 static int native_api_on_event(runtime_event_callback_t callback)
@@ -105,8 +104,9 @@ static int32_t native_api_k_delay(uint32_t delay_ms)
 
         events = k_event_wait(&native_wake_event,
                               NATIVE_WAKE_ALL,
-                              true,
+                              false,
                               K_MSEC(remaining_ms));
+        (void)k_event_clear(&native_wake_event, events);
         if ((events & NATIVE_WAKE_IRQ) != 0U) {
             native_service_dispatch_events();
         }
@@ -121,30 +121,19 @@ static uint32_t native_api_millis(void)
     return k_uptime_get_32();
 }
 
-/* Only the native application thread calls this pair. Repeated disable calls
- * are idempotent; restore preserves the mask from the first disable call.
- * The application must not sleep or call blocking APIs while IRQs are locked.
+/* Application interrupt control only gates deferred callback dispatch.
+ * Kernel, BLE, USB and GPIO capture remain interruptible. Calls are idempotent.
  */
-static unsigned int native_irq_key;
-static bool native_irqs_disabled;
-
 static void native_api_irq_disable(void)
 {
-    unsigned int key = irq_lock();
-
-    if (!native_irqs_disabled) {
-        native_irq_key = key;
-        native_irqs_disabled = true;
-    }
+    native_irqs_disabled = true;
 }
 
 static void native_api_irq_restore(void)
 {
     if (native_irqs_disabled) {
-        unsigned int key = native_irq_key;
-
         native_irqs_disabled = false;
-        irq_unlock(key);
+        native_service_dispatch_events();
     }
 }
 
@@ -293,6 +282,7 @@ struct native_gpio_irq {
     const struct gpio_dt_spec *pin;
     rtbus_gpio_irq_callback_t callback;
     void *argument;
+    atomic_t pending;
 };
 static struct native_gpio_irq native_gpio_irqs[NATIVE_GPIO_IRQ_COUNT];
 
@@ -304,8 +294,25 @@ static void native_gpio_irq_handler(const struct device *dev,
     ARG_UNUSED(pins);
     struct native_gpio_irq *entry = CONTAINER_OF(callback, struct native_gpio_irq, gpio_callback);
     if (entry->callback != NULL && atomic_get(&native_patch_handoff) == 0) {
-        // Arduino attachInterrupt callbacks run in interrupt context.
-        entry->callback(entry->argument);
+        /* Coalesce repeated edges until the native thread dispatches them.
+         * Never execute application code in the hardware ISR.
+         */
+        atomic_set(&entry->pending, 1);
+        (void)k_event_post(&native_wake_event, NATIVE_WAKE_IRQ);
+    }
+}
+
+static void native_gpio_irq_dispatch(void)
+{
+    for (size_t i = 0; i < ARRAY_SIZE(native_gpio_irqs); ++i) {
+        struct native_gpio_irq *entry = &native_gpio_irqs[i];
+
+        if (native_irqs_disabled || atomic_get(&native_patch_handoff) != 0) {
+            break;
+        }
+        if (atomic_cas(&entry->pending, 1, 0) && entry->callback != NULL) {
+            entry->callback(entry->argument);
+        }
     }
 }
 
@@ -317,10 +324,11 @@ static int native_gpio_irq_remove(struct native_gpio_irq *entry)
     int removed = gpio_remove_callback(entry->pin->port, &entry->gpio_callback);
     entry->pin = NULL;
     entry->argument = NULL;
+    atomic_clear(&entry->pending);
     return result != 0 ? result : removed;
 }
 
-static void native_gpio_irq_clear_all(void)
+static void native_gpio_irq_reset(void)
 {
     for (size_t i = 0; i < ARRAY_SIZE(native_gpio_irqs); ++i) {
         (void)native_gpio_irq_remove(&native_gpio_irqs[i]);
@@ -376,67 +384,13 @@ static void native_api_rtt_vprintf(const char *fmt, va_list args)
     vprintk(fmt, args);
 }
 
-static const struct device *native_api_serial_device(uint32_t port)
-{
-    switch (port) {
-    case RTBUS_SERIAL_PORT_0:
-        return native_serial_dev;
-#if DT_HAS_CHOSEN(rtbus_application_serial1)
-    case RTBUS_SERIAL_PORT_1:
-        return native_serial1_dev;
-#endif
-    default:
-        return NULL;
-    }
-}
-
-static bool native_api_serial_is_cdc(uint32_t port)
-{
-    switch (port) {
-    case RTBUS_SERIAL_PORT_0:
-        return DT_NODE_HAS_COMPAT(NATIVE_SERIAL_NODE, zephyr_cdc_acm_uart);
-#if DT_HAS_CHOSEN(rtbus_application_serial1)
-    case RTBUS_SERIAL_PORT_1:
-        return DT_NODE_HAS_COMPAT(NATIVE_SERIAL1_NODE, zephyr_cdc_acm_uart);
-#endif
-    default:
-        return false;
-    }
-}
-
-static bool native_api_serial_tx_ready(uint32_t port,
-                                       const struct device *serial_dev)
-{
-    uint32_t dtr = 0U;
-
-    if (!native_api_serial_is_cdc(port)) {
-        return true;
-    }
-
-    return uart_line_ctrl_get(serial_dev, UART_LINE_CTRL_DTR, &dtr) == 0 &&
-           dtr != 0U;
-}
-
 static size_t native_api_serial_write(uint32_t port, const uint8_t *data,
                                       size_t size)
 {
-    const struct device *serial_dev = native_api_serial_device(port);
     size_t written = 0U;
 
     if (data == NULL || size == 0U ||
         atomic_get(&native_console_suppressed) != 0) {
-        return 0U;
-    }
-
-    if (serial_dev == NULL) {
-        return 0U;
-    }
-
-    if (!device_is_ready(serial_dev)) {
-        return 0U;
-    }
-
-    if (!native_api_serial_tx_ready(port, serial_dev)) {
         return 0U;
     }
 
@@ -446,10 +400,7 @@ static size_t native_api_serial_write(uint32_t port, const uint8_t *data,
      */
     atomic_inc(&native_api_busy);
 
-    for (size_t i = 0U; i < size; i++) {
-        uart_poll_out(serial_dev, data[i]);
-        written++;
-    }
+    written = rtbus_runtime_serial_write(port, data, size);
 
     atomic_dec(&native_api_busy);
     return written;

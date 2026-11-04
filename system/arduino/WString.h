@@ -7,6 +7,7 @@ class __FlashStringHelper;
 #define F(text) (reinterpret_cast<const __FlashStringHelper *>(text))
 #endif
 class String {
+    template<class T> friend String operator+(String left, const T &right);
     char *buffer_ = nullptr;
     unsigned int length_ = 0;
     unsigned int capacity_ = 0;
@@ -97,6 +98,9 @@ public:
     friend bool operator>=(const String &a, const String &b) { return a.compareTo(b) >= 0; }
 };
 using StringSumHelper = String;
-template<class T> inline String operator+(String left, const T &right) { left.concat(right); return left; }
-inline String operator+(const char *left, const String &right) { String result(left); result.concat(right); return result; }
-inline String operator+(char left, const String &right) { String result(left); result.concat(right); return result; }
+template<class T> inline String operator+(String left, const T &right) {
+    if (!left || !left.concat(right)) { left.invalidate(); }
+    return left;
+}
+inline String operator+(const char *left, const String &right) { return String(left) + right; }
+inline String operator+(char left, const String &right) { return String(left) + right; }

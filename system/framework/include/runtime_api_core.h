@@ -52,9 +52,13 @@ extern uint32_t rtbus_millis(void);
 extern uint32_t rtbus_micros(void);
 extern void rtbus_yield(void);
 extern int rtbus_serial_control(uint32_t port, uint32_t operation, uint32_t baud, uint32_t format);
+/* GPIO callbacks run in the native thread at event dispatch points, not in
+ * the hardware ISR. Repeated triggers on one pin can coalesce before dispatch.
+ */
 typedef void (*rtbus_gpio_irq_callback_t)(void *argument);
 extern int rtbus_gpio_interrupt(uint32_t pin, uint32_t mode, rtbus_gpio_irq_callback_t callback, void *argument);
 extern void rtbus_delay_us(uint32_t us);
+/* Pause/resume application callback dispatch; runtime hardware IRQs stay on. */
 extern void rtbus_irq_disable(void);
 extern void rtbus_irq_restore(void);
 extern void rtbus_rtt_vprintf(const char *fmt, va_list args);

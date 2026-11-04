@@ -56,6 +56,12 @@ String never borrows Zephyr heap memory. The pool is shared by strings within
 one application, is not ISR-safe, and is discarded when unused by linker GC.
 Allocation failure is observable through reserve/concat and String validity;
 string operations cannot grow past the pool's available contiguous space.
+Copy construction and assignment preserve explicit lengths, including embedded
+NUL bytes. Failed `operator+` concatenation returns an invalid String instead
+of a valid partial result. Floating-point String construction supports fixed
+decimal output across the finite double range, with at most ten fractional
+digits, independently of Print's integer overflow limit. Formatting remains
+subject to floating-point precision and the available application String pool.
 
 Global C++ constructors run before setup. Global destructors are not registered:
 applications run until upgrade resets their RAM rather than exiting through libc.
@@ -76,6 +82,19 @@ TX buffer. Hardware UART flush has a one-second timeout and depends on driver
 TX-complete support. USB CDC flush reports `-ENOTSUP` via `Serial.lastError()`;
 the UART facade has no portable host-delivery/drain operation. Framing support
 also depends on the selected driver. `printf` retains its 159-byte output limit.
+Flush failures also set the Print write-error flag; a successful begin clears
+that flag. Native writes use the same runtime port state and write path as the
+maintenance service. RX overflow discards newly arriving bytes while preserving
+bytes already waiting to be read.
+
+By default, Serial shares its port with the maintenance CLI. Only lines starting
+with the reserved `@RTBUS:` header are consumed; other `@` lines are returned to
+the application when the prefix mismatches. An incomplete matching prefix is
+held until more bytes arrive. Set `CONFIG_RTBUS_RUNTIME_SERIAL_CLI_MUX=n` in
+the runtime configuration for a fully transparent byte stream, including partial
+headers; in-band CLI uploads are then unavailable. Serial1 has no CLI routing.
+With multiplexing enabled, Serial.end() discards application RX data while
+keeping the runtime maintenance receiver active.
 
 ADC/PWM, tone/noTone, Wire/SPI, and complete application libc/libm integration
 remain separate work requiring board/peripheral decisions. No placeholder
