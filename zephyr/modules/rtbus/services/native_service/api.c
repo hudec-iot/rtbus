@@ -28,12 +28,12 @@ static int native_api_rtbus_post(uint8_t task_id, uint32_t ctx_id,
     atomic_inc(&native_api_busy);
 
     if (payload_len > NATIVE_RTBUS_POST_PAYLOAD_MAX) {
-        ret = -EMSGSIZE;
+        ret = -RTBUS_EMSGSIZE;
         goto out;
     }
 
     if (payload_len != 0 && payload == NULL) {
-        ret = -EINVAL;
+        ret = -RTBUS_EINVAL;
         goto out;
     }
 
@@ -50,6 +50,16 @@ static int native_api_rtbus_post(uint8_t task_id, uint32_t ctx_id,
 
 out:
     atomic_dec(&native_api_busy);
+    if (ret == 0) {
+        /* Do not hold the upgrade guard while blocked. Only runtime-owned
+         * data remains queued, and stopping the image resets this handshake.
+         * No application callbacks are dispatched during admission wait.
+         */
+        ret = k_sem_take(&native_post_sem, K_FOREVER);
+        if (ret == 0) {
+            ret = native_post_status;
+        }
+    }
     return ret;
 }
 
@@ -471,11 +481,12 @@ __strong int rtbus_process_async_posts(void)
                             msg.payload_len);
         atomic_dec(&native_api_busy);
 
-        if (ret != 0) {
-            printk("native_service: async rtbus_post failed task_id=%u ctx_id=0x%08x payload_len=%u ret=%d\n",
-                   msg.task_id, msg.ctx_id, msg.payload_len, ret);
-            return ret;
-        }
+        /* EMOS is the single authority for accepting an event. Return its
+         * admission result to the producer rather than leaving the native
+         * wrapper waiting for a completion from a nonexistent service.
+         */
+        native_post_status = ret == -ENOTSUP ? -RTBUS_ENOTSUP : ret;
+        k_sem_give(&native_post_sem);
     }
 
     return 0;

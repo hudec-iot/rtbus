@@ -32,7 +32,7 @@ PLATFORM_FILES = (
 DEFAULT_VENDOR = "rtbus"
 DEFAULT_ARCHITECTURE = "rtduo"
 ARM_ZEPHYR_EABI_WINDOWS_URL = (
-    "https://github.com/BookerChang/rtbus/releases/download/"
+    "https://github.com/hudec-iot/rtbus/releases/download/"
     "tools/arm-zephyr-eabi-1.0.1-windows-x86_64.zip"
 )
 

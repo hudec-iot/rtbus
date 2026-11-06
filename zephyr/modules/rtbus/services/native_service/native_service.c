@@ -126,6 +126,12 @@ K_EVENT_DEFINE(native_wake_event);
 /* Completion signal only; the actual return value is written to result_addr. */
 K_SEM_DEFINE(native_result_sem, 0, 1);
 
+/* Native-thread submissions are serialized. This acknowledges EMOS admission,
+ * independently of the eventual service result in native_result_sem.
+ */
+K_SEM_DEFINE(native_post_sem, 0, 1);
+static int native_post_status;
+
 static runtime_event_callback_t native_event_callback;
 static bool native_irqs_disabled;
 static bool native_events_dispatching;
@@ -270,6 +276,8 @@ static void native_service_force_stop_thread(void)
     k_msgq_purge(&native_rtbus_post_msgq);
     k_msgq_purge(&native_event_msgq);
     k_sem_reset(&native_result_sem);
+    k_sem_reset(&native_post_sem);
+    native_post_status = 0;
     (void)k_event_clear(&native_wake_event, NATIVE_WAKE_ALL);
 }
 

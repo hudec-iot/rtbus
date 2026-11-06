@@ -24,6 +24,20 @@ for board identity and source mapping.
 See [Application signing](application-signing.md) for P-256 application packaging,
 runtime verification, keys, and initial resource budgets.
 
+## Optional runtime services
+
+The native post ABI transfers a request to the runtime thread and waits for
+the admission result from `rtbus_post()` / `emos_post()`. It does not duplicate
+the EMOS task lookup. A missing service returns `-RTBUS_ENOTSUP` (ABI value
+`-95`), so synchronous wrappers return without waiting for a service result.
+Admission acknowledgment is separate from service completion; native-thread
+submissions are serialized and no callbacks dispatch during admission wait.
+For example, BLE
+initialization on RAK3172T returns this error because the board has no BLE
+controller or registered BLE task. Applications can handle the error without
+board-specific checks. This check covers missing tasks; validation of supported
+events remains the responsibility of each registered service.
+
 ## Native application GPIO interrupts
 
 `attachInterrupt()` and `attachInterruptParam()` register runtime-owned GPIO

@@ -39,6 +39,7 @@ typedef uint32_t (*rtbus_millis_api_t)(void);
 
 extern int rtbus_api_is_ready(void);
 extern int rtbus_on_event(runtime_event_callback_t callback);
+/* Missing runtime tasks return -RTBUS_ENOTSUP before entering result wait. */
 extern int rtbus_post_wait_result(uint8_t task_id, uint32_t ctx_id, const void *payload, uint32_t payload_len, volatile int32_t *result);
 extern size_t rtbus_serial_write(uint32_t port, const uint8_t *data, size_t size);
 extern size_t rtbus_serial_vprintf(uint32_t port, const char *fmt, va_list args);

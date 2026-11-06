@@ -10,6 +10,7 @@
 #define RTBUS_ENOSYS         38
 #define RTBUS_EINVAL         22
 #define RTBUS_EMSGSIZE       90
+#define RTBUS_ENOTSUP        95
 #define RTBUS_EINPROGRESS    115
 #define RTBUS_WAIT_FOREVER   0xFFFFFFFFU
 
