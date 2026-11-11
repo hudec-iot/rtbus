@@ -41,6 +41,14 @@ enum rtbus_serial_control_op {
     RTBUS_SERIAL_CONTROL_READY,
 };
 
+/* Physical GPIO ID, separate from overlay-defined board aliases.
+ * nRF52840: port 0 pins 0..31, port 1 pins 0..15.
+ * This does not stop peripherals or arbitrate GPIO/I2C pin sharing.
+ */
+#define RTBUS_PIN_PHYSICAL_FLAG UINT32_C(0x80000000)
+#define RTBUS_PIN(port, pin) \
+    (RTBUS_PIN_PHYSICAL_FLAG | ((uint32_t)(port) << 8U) | (uint32_t)(pin))
+
 #define RTBUS_GPIO_IRQ_DETACH 0U
 #define RTBUS_GPIO_IRQ_LOW 1U
 #define RTBUS_GPIO_IRQ_HIGH 2U

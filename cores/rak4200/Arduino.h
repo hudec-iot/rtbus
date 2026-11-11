@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MPL-2.0 */
 #pragma once
 
+#include "pins.h"
 #include <stddef.h>
 #include <stdint.h>
 

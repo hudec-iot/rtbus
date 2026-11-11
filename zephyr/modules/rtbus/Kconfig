@@ -41,6 +41,14 @@ config RTBUS_NATIVE_SERVICE
       installs the existing runtime ABI table, and runs the native application
       thread.
 
+config RTBUS_NATIVE_GPIO_IRQ_COUNT
+    int "Maximum simultaneous native GPIO interrupt registrations"
+    depends on RTBUS_NATIVE_SERVICE
+    default 8
+    range 1 48
+    help
+      Statically allocated callback slots, independent of overlay GPIO maps.
+
 config RTBUS_DIAGNOSTICS_SERVICE
     bool "Enable RTBus diagnostics service"
     depends on RTBUS_NATIVE_SERVICE

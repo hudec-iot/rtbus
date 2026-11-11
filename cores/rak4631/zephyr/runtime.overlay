@@ -30,6 +30,8 @@
             gpios = <&gpio1 4 GPIO_ACTIVE_HIGH>;
         };
 
+
+
 		io1 {
 			rtbus,pin = <1>;
 			gpios = <&gpio0 17 GPIO_ACTIVE_HIGH>;

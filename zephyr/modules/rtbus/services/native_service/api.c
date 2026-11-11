@@ -205,9 +205,46 @@ static int native_api_serial_control(uint32_t port, uint32_t operation,
     return result;
 }
 
+static const struct gpio_dt_spec *native_gpio_physical_resolve(uint32_t pin)
+{
+#if defined(CONFIG_SOC_NRF52840) && \
+    DT_NODE_HAS_STATUS(DT_NODELABEL(gpio0), okay) && \
+    DT_NODE_HAS_STATUS(DT_NODELABEL(gpio1), okay)
+    /* Stable addresses are also used by interrupt registrations. Resolving
+     * a pin does not configure it; gpio_configure performs that operation.
+     */
+    static struct gpio_dt_spec physical_pins[48];
+    uint32_t port = (pin >> 8U) & 0xffU;
+    uint32_t number = pin & 0xffU;
+
+    if ((pin & UINT32_C(0xffff0000)) != RTBUS_PIN_PHYSICAL_FLAG ||
+        port > 1U || number >= (port == 0U ? 32U : 16U)) {
+        return NULL;
+    }
+
+    struct gpio_dt_spec *entry = &physical_pins[port * 32U + number];
+    entry->port = port == 0U ? DEVICE_DT_GET(DT_NODELABEL(gpio0)) :
+                              DEVICE_DT_GET(DT_NODELABEL(gpio1));
+    entry->pin = number;
+    entry->dt_flags = GPIO_ACTIVE_HIGH;
+    return entry;
+#else
+    ARG_UNUSED(pin);
+    return NULL;
+#endif
+}
+
 static int native_gpio_resolve(uint32_t pin,
                                const struct gpio_dt_spec **entry)
 {
+    if ((pin & RTBUS_PIN_PHYSICAL_FLAG) != 0U) {
+        *entry = native_gpio_physical_resolve(pin);
+        if (*entry == NULL) {
+            return -EINVAL;
+        }
+        return gpio_is_ready_dt(*entry) ? 0 : -ENODEV;
+    }
+
     size_t count;
     const struct native_board_gpio_pin *pins =
         native_board_gpio_pins(&count);
@@ -286,7 +323,7 @@ static int native_api_gpio_read(uint32_t pin)
     return gpio_pin_get_dt(entry);
 }
 
-#define NATIVE_GPIO_IRQ_COUNT DT_CHILD_NUM_STATUS_OKAY(DT_NODELABEL(rtbus_native_gpio))
+#define NATIVE_GPIO_IRQ_COUNT CONFIG_RTBUS_NATIVE_GPIO_IRQ_COUNT
 struct native_gpio_irq {
     struct gpio_callback gpio_callback;
     const struct gpio_dt_spec *pin;
@@ -365,7 +402,9 @@ static int native_api_gpio_interrupt(uint32_t pin, uint32_t mode,
     if (atomic_get(&native_patch_handoff) != 0 && mode != RTBUS_GPIO_IRQ_DETACH) { return -EBUSY; }
     struct native_gpio_irq *entry = NULL;
     for (size_t i = 0; i < ARRAY_SIZE(native_gpio_irqs); ++i) {
-        if (native_gpio_irqs[i].pin == spec) {
+        if (native_gpio_irqs[i].pin != NULL &&
+            native_gpio_irqs[i].pin->port == spec->port &&
+            native_gpio_irqs[i].pin->pin == spec->pin) {
             entry = &native_gpio_irqs[i];
             result = native_gpio_irq_remove(entry);
             if (result != 0) { return result; }
