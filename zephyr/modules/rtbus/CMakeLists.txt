@@ -18,6 +18,7 @@ if(CONFIG_RTBUS_LIB)
     services/rtbus_event.c
     services/native_service/native_service.c
     services/native_service/native_board.c
+    services/native_service/native_adc.c
     services/rtbus_image.c
   )
 

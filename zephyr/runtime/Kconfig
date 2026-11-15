@@ -1,5 +1,11 @@
 mainmenu "RTBus runtime configuration"
 
+# Enable system off independently of native-service driver dependencies.
+# Selecting POWEROFF from the native service creates a dependency cycle
+# through SERIAL and the USB stack on supported boards.
+config POWEROFF
+	default y if HAS_POWEROFF
+
 config NORDIC_HV_REGOUT0_3V3
 	bool "Set Nordic HV REGOUT0 and SX1262 TCXO to 3.3 V"
 	depends on SOC_NRF52840

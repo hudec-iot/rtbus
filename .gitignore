@@ -4,7 +4,6 @@
 .agents/
 .codex/
 .west/
-.wiki
 .tmp/
 .key-backup*
 build*/

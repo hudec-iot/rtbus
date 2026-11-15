@@ -17,6 +17,8 @@ extern "C" {
 #define RUNTIME_EVENT_BLE_RECYCLED         3U
 #define RUNTIME_EVENT_BLE_SECURITY_CHANGED 4U
 #define RUNTIME_EVENT_BLE_CONNECT_FAILED   5U
+/* value: service handle, characteristic index, then 1..32 command bytes. */
+#define RUNTIME_EVENT_BLE_GATT_WRITE       6U
 
 #define RUNTIME_BLE_SECURITY_NONE          0U
 #define RUNTIME_BLE_SECURITY_L2            2U
@@ -26,6 +28,7 @@ typedef uint8_t runtime_ble_gatt_handle_t;
 typedef uint8_t runtime_ble_gatt_chrc_handle_t;
 
 #define RUNTIME_BLE_GATT_CHRC_READ      0x02U
+#define RUNTIME_BLE_GATT_CHRC_WRITE     0x08U
 #define RUNTIME_BLE_GATT_CHRC_NOTIFY    0x10U
 
 #define RUNTIME_BLE_GATT_PERM_READ      0x01U
@@ -172,6 +175,30 @@ static inline int runtime_ble_gatt_value_set(runtime_ble_gatt_handle_t handle,
                                   &req,
                                   APPLICATION_BLE_GATT_VALUE_SET_PAYLOAD_SIZE,
                                   &result);
+}
+
+static inline int runtime_event_is_ble_disconnected(
+    const struct runtime_event_tlv *event,
+    uint8_t *reason);
+
+/* data points into event storage and is valid only during event dispatch. */
+static inline int runtime_event_is_ble_gatt_write(
+    const struct runtime_event_tlv *event,
+    runtime_ble_gatt_handle_t *handle,
+    runtime_ble_gatt_chrc_handle_t *chrc,
+    const uint8_t **data, uint8_t *len)
+{
+    if (event == 0 || handle == 0 || chrc == 0 || data == 0 || len == 0 ||
+        event->group != RUNTIME_EVENT_GROUP_BLE ||
+        event->tag != RUNTIME_EVENT_BLE_GATT_WRITE ||
+        event->len < 3U || event->len > 2U + RUNTIME_BLE_GATT_VALUE_MAX) {
+        return 0;
+    }
+    *handle = event->value[0];
+    *chrc = event->value[1];
+    *data = &event->value[2];
+    *len = (uint8_t)(event->len - 2U);
+    return 1;
 }
 
 static inline int runtime_event_is_ble_disconnected(

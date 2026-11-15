@@ -18,5 +18,7 @@ int native_service_stop_for_upgrade(void);
 void native_service_resume_after_upgrade(void);
 void native_service_suppress_console(bool suppress);
 int native_service_start(void);
+/* Board peripheral preparation only; system-off policy belongs to runtime. */
+int native_service_prepare_sleep(void);
 
 #endif /* RTBUS_NATIVE_SERVICE_H_ */

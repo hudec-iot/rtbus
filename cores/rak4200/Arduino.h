@@ -27,6 +27,11 @@ extern "C" {
 #endif
 
 void delay(unsigned long ms);
+/* Default 10 bits; unsupported boards return negative RTBus errno. */
+int analogRead(uint32_t pin);
+void analogReadResolution(int bits);
+/* RTDuo system deep sleep: success never returns; failure returns negative errno. */
+int sleep(void);
 void delayMicroseconds(unsigned int us);
 /* Keep IRQ-disabled sections short; do not call delay() or Serial inside. */
 void noInterrupts(void);

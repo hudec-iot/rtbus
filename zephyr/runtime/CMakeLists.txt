@@ -37,6 +37,7 @@ target_sources(app PRIVATE
     src/main.c
     src/services/startup_service.c
     src/services/rtbus_serial.c
+    src/services/rtbus_power.c
 )
 
 target_sources_ifdef(CONFIG_RTBUS_RUNTIME_BLE app PRIVATE

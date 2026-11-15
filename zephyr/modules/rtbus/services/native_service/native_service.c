@@ -197,6 +197,11 @@ static void native_service_dispatch_events(void)
 #include "api.c"
 #include "abi.c"
 
+int native_service_prepare_sleep(void)
+{
+    return native_board_prepare_sleep();
+}
+
 static bool native_result_addr_valid(uint32_t result_addr)
 {
     uintptr_t addr = (uintptr_t)result_addr;

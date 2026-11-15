@@ -1,5 +1,21 @@
 /* SPDX-License-Identifier: MPL-2.0 */
+#include <zephyr/dt-bindings/adc/adc.h>
+#include <zephyr/dt-bindings/adc/nrf-saadc.h>
 / {
+    rtbus_native_adc: rtbus-native-adc {
+        compatible = "rtbus,native-adc";
+        ain0 {
+            /* Matches AIN0 = RTBUS_PIN(0, 5) in the RAK4631 core. */
+            rtbus,pin = <0x80000005>;
+            io-channels = <&adc 1>;
+            gpios = <&gpio0 5 GPIO_ACTIVE_HIGH>;
+        };
+        ain1 {
+            rtbus,pin = <20>;
+            io-channels = <&adc 0>;
+            gpios = <&gpio0 31 GPIO_ACTIVE_HIGH>;
+        };
+    };
     chosen {
         /delete-property/ zephyr,console;
         /delete-property/ zephyr,uart-mcumgr;
@@ -109,7 +125,9 @@
 };
 
 &gpio1 {
-	/* P1.05: board RF IO, not RX/TX switch; hold high at boot */
+	/* P1.05: board RF IO, not RX/TX switch; high at boot.
+	 * RAK4631 runtime sleep preparation drives it low before System OFF.
+	 */
 	rf_io_default: rf-io-default {
 		gpio-hog;
 		gpios = <5 GPIO_ACTIVE_HIGH>;
@@ -120,6 +138,28 @@
 
 &reg1 {
 	regulator-initial-mode = <NRF5X_REG_MODE_DCDC>;
+};
+
+&adc {
+    status = "okay";
+    #address-cells = <1>;
+    #size-cells = <0>;
+    channel@0 {
+        reg = <0>;
+        zephyr,gain = "ADC_GAIN_1_6";
+        zephyr,reference = "ADC_REF_INTERNAL";
+        zephyr,acquisition-time = <ADC_ACQ_TIME(ADC_ACQ_TIME_MICROSECONDS, 10)>;
+        zephyr,input-positive = <NRF_SAADC_AIN7>;
+        zephyr,resolution = <12>;
+    };
+    channel@1 {
+        reg = <1>;
+        zephyr,gain = "ADC_GAIN_1_6";
+        zephyr,reference = "ADC_REF_INTERNAL";
+        zephyr,acquisition-time = <ADC_ACQ_TIME(ADC_ACQ_TIME_MICROSECONDS, 40)>;
+        zephyr,input-positive = <NRF_SAADC_AIN3>;
+        zephyr,resolution = <12>;
+    };
 };
 
 &flash0 {

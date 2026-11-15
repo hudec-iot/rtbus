@@ -70,6 +70,8 @@ static uint8_t rtbus_ble_gap_flags;
     (1U + (RTBUS_BLE_APP_GATT_CHRC_MAX * 3U))
 
 struct rtbus_ble_app_gatt_chrc {
+    uint8_t service_handle;
+    uint8_t chrc_index;
     bool notify_enabled;
     bool has_ccc;
     uint8_t value_attr_index;
@@ -107,8 +109,52 @@ static ssize_t rtbus_ble_app_gatt_read(struct bt_conn *conn,
         return BT_GATT_ERR(BT_ATT_ERR_UNLIKELY);
     }
 
+    /* A Battery Level requires a measured percentage. Do not expose an
+     * empty initial value as a valid battery reading.
+     */
+    if (chrc->value_len == 0U &&
+        bt_uuid_cmp(&chrc->value_uuid.uuid, BT_UUID_BAS_BATTERY_LEVEL) == 0) {
+        return BT_GATT_ERR(BT_ATT_ERR_UNLIKELY);
+    }
+
     return bt_gatt_attr_read(conn, attr, buf, len, offset,
                              chrc->value, chrc->value_len);
+}
+
+static ssize_t rtbus_ble_app_gatt_write(struct bt_conn *conn,
+                                       const struct bt_gatt_attr *attr,
+                                       const void *buf, uint16_t len,
+                                       uint16_t offset, uint8_t flags)
+{
+    const struct rtbus_ble_app_gatt_chrc *chrc = attr->user_data;
+    uint8_t payload[2U + RUNTIME_BLE_GATT_VALUE_MAX];
+
+    ARG_UNUSED(conn);
+    /* Commands are single, nonempty writes. Do not execute prepared writes. */
+    if ((flags & BT_GATT_WRITE_FLAG_PREPARE) != 0U) {
+        return BT_GATT_ERR(BT_ATT_ERR_NOT_SUPPORTED);
+    }
+    if (offset != 0U) {
+        return BT_GATT_ERR(BT_ATT_ERR_INVALID_OFFSET);
+    }
+    if (len == 0U || len > RUNTIME_BLE_GATT_VALUE_MAX) {
+        return BT_GATT_ERR(BT_ATT_ERR_INVALID_ATTRIBUTE_LEN);
+    }
+    if (chrc == NULL) {
+        return BT_GATT_ERR(BT_ATT_ERR_UNLIKELY);
+    }
+    payload[0] = chrc->service_handle;
+    payload[1] = chrc->chrc_index;
+    memcpy(&payload[2], buf, len);
+    /* Copy into the native queue; application code runs in its own thread.
+     * A successful ATT response acknowledges queue admission, not execution.
+     */
+    if (native_service_emit_event(RUNTIME_EVENT_GROUP_BLE,
+                                  RUNTIME_EVENT_BLE_GATT_WRITE,
+                                  payload, len + 2U) != 0) {
+        return BT_GATT_ERR(BT_ATT_ERR_INSUFFICIENT_RESOURCES);
+    }
+    return len;
 }
 
 static struct rtbus_ble_app_gatt_chrc *rtbus_ble_app_gatt_find_chrc_ccc(
@@ -450,9 +496,13 @@ static int rtbus_ble_app_gatt_notify_register_now(
         attr_index++;
 
         chrc->value_attr_index = attr_index;
+        chrc->service_handle = handle;
+        chrc->chrc_index = i;
         gatt->attrs[attr_index].uuid = &chrc->value_uuid.uuid;
         gatt->attrs[attr_index].read = rtbus_ble_app_gatt_read;
-        gatt->attrs[attr_index].write = NULL;
+        gatt->attrs[attr_index].write =
+            (properties & BT_GATT_CHRC_WRITE) != 0U ?
+                rtbus_ble_app_gatt_write : NULL;
         gatt->attrs[attr_index].user_data = chrc;
         gatt->attrs[attr_index].perm =
             rtbus_ble_app_gatt_value_perm(chrc_def);

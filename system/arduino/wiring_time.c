@@ -2,6 +2,12 @@
 #include <stdint.h>
 
 #include "runtime_api.h"
+#include "wiring_analog.inc"
+
+int sleep(void)
+{
+    return rtbus_sleep();
+}
 
 void delay(unsigned long ms)
 {

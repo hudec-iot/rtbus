@@ -45,6 +45,7 @@ static void native_api_table_install(void)
     api_table[RTBUS_API_SLOT_YIELD] = (uintptr_t)native_api_yield;
     api_table[RTBUS_API_SLOT_SERIAL_CONTROL] = (uintptr_t)native_api_serial_control;
     api_table[RTBUS_API_SLOT_GPIO_INTERRUPT] = (uintptr_t)native_api_gpio_interrupt;
+    api_table[RTBUS_API_SLOT_ANALOG_READ] = (uintptr_t)native_api_analog_read;
     api_table[RTBUS_API_SLOT_IRQ_RESTORE] =
         (uintptr_t)native_api_irq_restore;
 }

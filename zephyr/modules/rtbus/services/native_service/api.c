@@ -196,6 +196,14 @@ static void native_api_yield(void)
     k_yield();
 }
 
+static int native_api_analog_read(uint32_t pin, uint32_t bits)
+{
+    atomic_inc(&native_api_busy);
+    int ret = native_board_analog_read(pin, bits);
+    atomic_dec(&native_api_busy);
+    return ret;
+}
+
 static int native_api_serial_control(uint32_t port, uint32_t operation,
                                       uint32_t baud, uint32_t format)
 {

@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: MPL-2.0
+description: RTBus native application single-ended ADC export map
+compatible: "rtbus,native-adc"
+child-binding:
+  description: ADC input exported to native applications
+  properties:
+    rtbus,pin:
+      type: int
+      required: true
+    io-channels:
+      type: phandle-array
+      required: true
+    gpios:
+      type: phandle-array
+      required: true
+      description: Pin to disconnect from digital GPIO before ADC sampling.

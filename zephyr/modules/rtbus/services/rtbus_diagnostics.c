@@ -8,6 +8,7 @@
 
 #include <rtbus.h>
 #include <rtbus/native_service.h>
+#include <rtbus/runtime_power.h>
 
 #include "runtime_abi.h"
 
@@ -27,6 +28,22 @@ static uint8_t rtbus_diagnostics_process(rtbus_ctx_t *ctx)
 
         case APPLICATION_DIAGNOSTICS_CLI:
             LOG_INF("Diagnostics test event received");
+            break;
+
+        case APPLICATION_DIAGNOSTICS_SLEEP:
+            {
+                struct application_sleep_req req;
+                if (ctx->payload_len != sizeof(req)) {
+                    LOG_ERR("sleep request payload size mismatch");
+                    break;
+                }
+                memcpy(&req, ctx->payload, sizeof(req));
+                ret = rtbus_runtime_power_off();
+                LOG_ERR("System off failed: %d", ret);
+                if (native_service_complete_result(req.result_addr, ret) != 0) {
+                    LOG_ERR("sleep result write failed");
+                }
+            }
             break;
 
 #if defined(CONFIG_RTBUS_DIAGNOSTICS_SERVICE)

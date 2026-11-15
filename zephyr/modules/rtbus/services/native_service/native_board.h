@@ -16,5 +16,8 @@ struct native_board_gpio_pin {
 };
 
 const struct native_board_gpio_pin *native_board_gpio_pins(size_t *count);
+/* Prepare board peripherals for system off; negative errno on failure. */
+int native_board_prepare_sleep(void);
+int native_board_analog_read(uint32_t pin, uint32_t bits);
 
 #endif /* RTBUS_NATIVE_SERVICE_NATIVE_BOARD_H */

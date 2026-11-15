@@ -3,6 +3,9 @@
 
 #include "runtime_abi.h"
 
+/* Board battery sense (WB_A0): P0.05 / SAADC AIN3. */
+#define AIN0 RTBUS_PIN(0, 5)
+
 /* Core-owned application pin IDs. Untagged IDs retain the runtime
  * overlay mapping; RTBUS_PIN IDs address physical GPIOs directly.
  */

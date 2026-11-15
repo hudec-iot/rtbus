@@ -52,6 +52,26 @@ extern int32_t k_delay(uint32_t delay_ms);
 extern uint32_t rtbus_millis(void);
 extern uint32_t rtbus_micros(void);
 extern void rtbus_yield(void);
+/* Enter runtime-wide deep sleep (system off), not a Zephyr thread sleep.
+ * Posts a runtime task event through the standard post/result-wait path.
+ * Kernel thread timeouts do not resume execution. No wakeup is requested.
+ * Success never returns; unsupported
+ * runtimes return -RTBUS_ENOTSUP. Call from application thread context after
+ * completing pending I/O. Board sleep preparation errors are returned without
+ * entering system off. No wake sources are configured.
+ */
+static inline int rtbus_sleep(void)
+{
+    static volatile int32_t result;
+    struct application_sleep_req req = {
+        (uint32_t)(uintptr_t)&result,
+    };
+    return rtbus_post_wait_result(RTBUS_TASK_DIAGNOSTICS,
+                                  APPLICATION_DIAGNOSTICS_SLEEP,
+                                  &req, sizeof(req), &result);
+}
+/* ADC count at 1..16 output bits, or negative errno. Thread context only. */
+extern int rtbus_analog_read(uint32_t pin, uint32_t bits);
 extern int rtbus_serial_control(uint32_t port, uint32_t operation, uint32_t baud, uint32_t format);
 /* GPIO callbacks run in the native thread at event dispatch points, not in
  * the hardware ISR. Repeated triggers on one pin can coalesce before dispatch.
