@@ -3,7 +3,7 @@ THIS_MAKEFILE := $(lastword $(MAKEFILE_LIST))
 THIS_DIR := $(dir $(abspath $(THIS_MAKEFILE)))
 REPO_ROOT ?= $(abspath $(THIS_DIR)/../../../..)
 BOARD_PROFILE ?= rak4631
-ARDUINO_SKETCH := libraries/RTDuo/examples/arduino
+ARDUINO_SKETCH := libraries/RTDuo/development/Project
 
 .PHONY: compile
 compile:
@@ -21,4 +21,4 @@ version:
 
 .PHONY: clean
 clean:
-	$(MAKE) -C $(REPO_ROOT) arduino.clean
+	$(MAKE) -C $(REPO_ROOT) arduino.clean ARDUINO_SKETCH=$(ARDUINO_SKETCH)

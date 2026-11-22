@@ -2,6 +2,7 @@ RAK4631.name=RAK4631 RTDuo
 
 RAK4631.build.board=RAK4631
 RAK4631.build.core=rak4631
+RAK4631.build.application.signing.key={runtime.platform.path}/system/secure/application-p256-private.key
 RAK4631.build.variant=RAK5005O
 RAK4631.build.mcu=cortex-m4
 RAK4631.build.f_cpu=64000000L
@@ -23,6 +24,7 @@ RAK3172P.name=RAK3172P RTDuo
 
 RAK3172P.build.board=RAK3172P
 RAK3172P.build.core=rak3172p
+RAK3172P.build.application.signing.key={runtime.platform.path}/system/secure/application-p256-private.key
 RAK3172P.build.variant=RAK5005O
 RAK3172P.build.mcu=cortex-m4
 RAK3172P.build.f_cpu=48000000L
@@ -44,6 +46,7 @@ RAK3172T.name=RAK3172T RTDuo
 
 RAK3172T.build.board=RAK3172T
 RAK3172T.build.core=rak3172t
+RAK3172T.build.application.signing.key={runtime.platform.path}/system/secure/application-p256-private.key
 RAK3172T.build.variant=RAK5005O
 RAK3172T.build.mcu=cortex-m4
 RAK3172T.build.f_cpu=48000000L
@@ -65,6 +68,7 @@ RAK11720.name=RAK11720 RTDuo
 
 RAK11720.build.board=RAK11720
 RAK11720.build.core=rak11720
+RAK11720.build.application.signing.key={runtime.platform.path}/system/secure/application-p256-private.key
 RAK11720.build.variant=RAK5005O
 RAK11720.build.mcu=cortex-m4
 RAK11720.build.f_cpu=48000000L
@@ -82,6 +86,7 @@ RAK4200.name=RAK4200 RTDuo
 
 RAK4200.build.board=RAK4200
 RAK4200.build.core=rak4200
+RAK4200.build.application.signing.key={runtime.platform.path}/system/secure/application-p256-private.key
 RAK4200.build.variant=RAK5005O
 RAK4200.build.mcu=cortex-m0plus
 RAK4200.build.f_cpu=32000000L

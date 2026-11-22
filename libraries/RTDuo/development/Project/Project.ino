@@ -1,12 +1,24 @@
 /* SPDX-License-Identifier: MPL-2.0 */
-// #include "../../../../../../../.project/niin/orp/sample.ino"
-// #include "../../../../../../../.project/rakwireless/nbiot/project.ino"
-// #include "../../../../../../../.project/ble_perpheral/sample.ino"
-// #include "../../../../../../../.project/canbus/sample.ino"
-#include "../../../../../../../.project/hx711/sample.ino"
+#define STRINGIFY_IMPL(x) #x
+#define STRINGIFY(x) STRINGIFY_IMPL(x)
+// Relative to the generated source in build/<BOARD>/sketch/.
+#define ROOT(path) STRINGIFY(../../../../../../../path)
 
-#ifndef PROJECT_ALONE
 
+/***** Project Example *****/ 
+// #include ROOT(.project/hx711/sample.ino)
+
+/***** BLE Example *****/ 
+// #include ROOT(libraries/RTDuo/examples/BLE/Peripheral.ino)
+
+/***** IO Example *****/ 
+// #include ROOT(libraries/RTDuo/examples/IO/Analog/Analog.ino)
+// #include ROOT(libraries/RTDuo/examples/IO/Digital/Digital.ino)
+
+/***** Interface Example *****/ 
+// #include ROOT(libraries/RTDuo/examples/Interface/Scale/Scale.ino)
+
+#ifndef RTDUO_EXAMPLE
 
 void setup() {
   Serial.begin(115200);

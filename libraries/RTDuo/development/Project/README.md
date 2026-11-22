@@ -4,6 +4,14 @@ Use `Project.ino` as a starting point for an RTDuo application. This development
 sketch lives outside `examples/` and does not appear in the Arduino IDE examples
 menu. It is the default sketch for `make application`.
 
+From this directory, run `make compile BOARD_PROFILE=rak4631` to build the
+sketch through the repository Makefile. Use `make boards` or `make version`
+to inspect the local Arduino setup.
+
+The default loop echoes serial input and prints an RTBus diagnostics result
+every two seconds. The BLE peripheral sketch is available in
+[`examples/BLE/Peripheral`](../../examples/BLE/Peripheral/Peripheral.ino).
+
 Repository builds write directly to `Project/build/<BOARD>/`, for example
 `Project/build/RAK4631/`. `make jlink.download.application` uses the same directory.
 `make application.clean` removes the selected board's output; `make arduino.clean`

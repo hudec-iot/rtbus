@@ -30,7 +30,7 @@ build.application.pack=true
 build.application.name=application
 build.application.version=0.1.0
 build.application.build=0
-build.application.signing.key={runtime.platform.path}/system/secure/application-p256-private.key
+# Signing-key defaults live in boards.txt so Burn Bootloader can resolve them too.
 build.application.export.path={build.source.path}/build/{build.board}
 tools.application_pack.header.path={runtime.platform.path}/system/tcc/header.c
 tools.jlink.cmd.path={runtime.tools.tcc.path}/bin/tcc
