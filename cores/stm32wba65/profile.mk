@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: MPL-2.0
+
+PROFILE_NAME := stm32wba65
+APPLICATION_TARGET_MCU ?= cortex-m33
+ZEPHYR_BOARD ?= nucleo_wba65ri/stm32wba65xx
+ZEPHYR_BOARD_SOURCE ?= upstream
+ZEPHYR_SOC ?= stm32wba65xx
+ZEPHYR_BLOB_MODULES ?= hal_stm32
+JLINK_TARGET ?= STM32WBA65RI
+RUNTIME_BOARD_DIR ?= cores/stm32wba65/zephyr

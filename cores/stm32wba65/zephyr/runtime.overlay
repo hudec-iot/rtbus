@@ -1,0 +1,69 @@
+/* SPDX-License-Identifier: MPL-2.0 */
+
+/ {
+	chosen {
+		rtbus,application-serial = &usart1;
+		zephyr,code-partition = &runtime_partition;
+		zephyr,settings-partition = &storage_partition;
+	};
+
+	runtime_key_memory: runtime-key-memory@8100000 {
+		compatible = "zephyr,memory-region";
+		reg = <0x08100000 0x2000>;
+		zephyr,memory-region = "RTBUS_KEY";
+		zephyr,memory-region-flags = "r";
+	};
+};
+
+/* Direct boot from bank 1. Bank 2 holds the key, application, and settings. */
+&flash0 {
+	/delete-node/ partitions;
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		runtime_partition: partition@0 {
+			label = "runtime";
+			reg = <0x000000 0x100000>;
+		};
+
+		runtime_key_partition: partition@100000 {
+			label = "runtime_key";
+			reg = <0x100000 0x2000>;
+		};
+
+		component_slot_partition: partition@102000 {
+			label = "component_slot";
+			reg = <0x102000 0xa000>;
+		};
+
+		storage_partition: partition@1f2000 {
+			label = "storage";
+			reg = <0x1f2000 0xe000>;
+		};
+	};
+};
+
+/* Reserve the end of SRAM0 for the native application and ABI table. */
+&sram0 {
+	reg = <0x20000000 0x6df00>;
+
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		shared_upgrade_ram: shared_upgrade_ram@2006df00 {
+			compatible = "zephyr,memory-region";
+			reg = <0x2006df00 DT_SIZE_K(8)>;
+			zephyr,memory-region = "SHARED_UPGRADE_RAM";
+		};
+
+		shared_ram: shared_mem@2006ff00 {
+			compatible = "zephyr,memory-region";
+			reg = <0x2006ff00 0x100>;
+			zephyr,memory-region = "SHARED_RAM";
+		};
+	};
+};

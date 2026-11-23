@@ -1,9 +1,0 @@
-# SPDX-License-Identifier: MPL-2.0
-
-PROFILE_NAME := rak4200
-APPLICATION_TARGET_MCU ?= cortex-m0plus
-ZEPHYR_BOARD ?= rak4200
-ZEPHYR_BOARD_SOURCE ?= project
-ZEPHYR_SOC ?= stm32l071xx
-JLINK_TARGET ?= STM32L071KB
-BOARD_ROOTS ?= cores/rak4200/zephyr

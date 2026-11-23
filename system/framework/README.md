@@ -13,9 +13,8 @@ build rules provide these include paths; Zephyr builds use the same contract.
 Header names, function symbols, slot numbers, and data layouts are preserved.
 
 The ABI call thunks and application entry remain in `system/startup.S`.
-Arduino adapters in `cores/rak4631/`, `cores/rak3172p/`, and `cores/rak3172t/`
-include the shared headers and implementations under `system/arduino/`.
-RAK4200 retains its existing adapters. Runtime API implementations,
+The Arduino core adapters include the shared headers and implementations under
+`system/arduino/`. Runtime API implementations,
 ABI table installation, and application loading remain in
 `zephyr/modules/rtbus/services/native_service/`.
 

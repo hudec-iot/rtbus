@@ -9,12 +9,11 @@ const TERMINAL_PROFILE_ID = 'rtduo.builderShell';
 const TERMINAL_PROFILE_TITLE = 'RTDuo Builder Shell';
 const BOARDS = [
   'rak4631',
-  'rak3172',
-  'rak3172f',
   'rak3172p',
   'rak3172t',
-  'rak11720',
-  'rak4200'
+  'stm32wba65',
+  'stm32wba62',
+  'stm32l071'
 ];
 
 let output;

@@ -30,7 +30,8 @@ for setup and connection details.
 
 ## Build from Source
 
-Current active board profiles are `rak4631`, `rak3172p`, `rak3172t`, and `rak4200`.
+Current active board profiles are `rak4631`, `rak3172p`, `rak3172t`,
+`stm32wba65`, `stm32wba62`, and `stm32l071`.
 Repository builds use Docker or Podman with the published builder image selected
 in `system/make/docker.mk`; it is pulled automatically when missing.
 

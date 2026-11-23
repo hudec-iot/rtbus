@@ -100,7 +100,9 @@ The profiles currently selected by `system/make/boards.mk` are:
 - `rak4631`
 - `rak3172p`
 - `rak3172t`
-- `rak4200`
+- `stm32wba65`
+- `stm32wba62`
+- `stm32l071`
 
 Use `BOARD_PROFILE=<profile>` for root board-specific commands. Native builds
 select the profile through the Makefile in each core directory.

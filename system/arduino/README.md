@@ -76,10 +76,6 @@ void loop() {
 }
 ```
 
-RAK4200 has not migrated to the shared core adapters. Its existing references
-to the shared math and formatting helpers continue to work. The framework
-compatibility header remains a forwarding include for its existing header path.
-
 The complete `system/` tree is already included in Arduino staging and release
 packages. Application function/data section garbage collection still applies.
 
@@ -139,9 +135,6 @@ the HX711 application owns its RAK19007 battery divider and percentage conversio
   replacement/removal, case/whitespace operations, and numeric conversions.
 - Serial baud/framing selection, RX byte counts, peek/read, end, connection
   checks, and hardware-UART TX drain through the runtime interrupt driver API.
-
-`serial_print.cpp` remains for RAK4200's legacy adapter. The migrated cores use
-`Print.cpp` instead; do not compile the legacy formatting file separately.
 
 ## Resource and Driver Limits
 

@@ -41,7 +41,6 @@
 #define NATIVE_FLASH_BASE          DT_FIXED_PARTITION_ADDR(DT_NODELABEL(component_slot_partition))
 #define NATIVE_RTBUS_POST_QUEUE_DEPTH   8
 #define NATIVE_RTBUS_POST_PAYLOAD_MAX   32
-#define NATIVE_EVENT_QUEUE_DEPTH           8
 #define NATIVE_UPGRADE_HANDOFF_TIMEOUT_MS 2000
 #define NATIVE_REQUIRED_ABI_VERSION        RTBUS_API_VERSION
 #define NATIVE_WAKE_IRQ       (1U << 0)
@@ -118,7 +117,7 @@ K_MSGQ_DEFINE(native_rtbus_post_msgq,
 
 K_MSGQ_DEFINE(native_event_msgq,
              sizeof(struct runtime_event_tlv),
-             NATIVE_EVENT_QUEUE_DEPTH,
+             CONFIG_RTBUS_NATIVE_EVENT_QUEUE_DEPTH,
              4);
 
 K_EVENT_DEFINE(native_wake_event);

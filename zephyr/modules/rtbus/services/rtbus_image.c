@@ -478,7 +478,7 @@ int rtbus_image_store_finish(int status)
         LOG_ERR("Application signature rejected (%d)", rc);
         goto out;
     }
-#else
+#elif !defined(CONFIG_RTBUS_IMAGE_ALLOW_UNVERIFIED)
     rc = -ENOTSUP;
     goto out;
 #endif
@@ -518,7 +518,7 @@ int rtbus_image_get_status(struct rtbus_image_status *status)
     if (rc == 0 && crc == header.payload_crc32) {
         rc = rtbus_image_verify(area, RTBUS_IMAGE_HEADER_SIZE + header.payload_size);
     }
-#else
+#elif !defined(CONFIG_RTBUS_IMAGE_ALLOW_UNVERIFIED)
     rc = -ENOTSUP;
 #endif
     flash_area_close(area);

@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: MPL-2.0
+board:
+  name: stm32l071
+  full_name: STM32L071
+  vendor: others
+  socs:
+    - name: stm32l071xx

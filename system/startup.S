@@ -56,9 +56,19 @@ __rtduo_start:
 .type \name, %function
 .thumb_func
 \name:
+#if defined(__ARM_ARCH_6M__)
+    /* Thumb-1 loads require a low register. Preserve all argument registers. */
+    push {r4}
+    ldr r4, =__rtduo_api_table_base
+    ldr r4, [r4]
+    ldr r4, [r4, #\offset]
+    mov r12, r4
+    pop {r4}
+#else
     ldr r12, =__rtduo_api_table_base
     ldr r12, [r12]
     ldr r12, [r12, #\offset]
+#endif
     bx r12
 .size \name, . - \name
 .endm
@@ -118,12 +128,12 @@ rtbus_api_is_ready:
 .type rtbus_on_event, %function
 .thumb_func
 rtbus_on_event:
-    ldr r12, =__rtduo_api_table_base
-    ldr r12, [r12]
-    ldr r12, [r12, #RTBUS_API_SLOT_ON_EVENT_OFFSET]
-    cmp r12, #0
+    ldr r1, =__rtduo_api_table_base
+    ldr r1, [r1]
+    ldr r1, [r1, #RTBUS_API_SLOT_ON_EVENT_OFFSET]
+    cmp r1, #0
     beq 1f
-    bx r12
+    bx r1
 
 1:
     movs r0, #RTBUS_ENOSYS
@@ -146,8 +156,8 @@ rtbus_post_wait_result:
     ldr r5, =__rtduo_api_table_base
     ldr r5, [r5]
     ldr r6, [r5, #RTBUS_API_SLOT_RESULT_WAIT_OFFSET]
-    ldr r12, [r5, #RTBUS_API_SLOT_RTBUS_POST_OFFSET]
-    blx r12
+    ldr r5, [r5, #RTBUS_API_SLOT_RTBUS_POST_OFFSET]
+    blx r5
     cmp r0, #0
     bne 1f
 

@@ -69,10 +69,16 @@ from the currently selected private key and writes it after loading runtime,
 before resetting and starting the MCU. `RTBUS_SIGNING_KEY`, when set, takes
 precedence over `build.application.signing.key` in both operations.
 
-The runtime target merges `zephyr/runtime/app-p256.conf` with the selected board
-configuration. Direct Zephyr builds must merge the same fragment. Runtime reads
+For profiles with P-256 verification enabled, the runtime target merges
+`zephyr/runtime/app-p256.conf` with the selected board configuration. Direct
+Zephyr builds for those profiles must merge the same fragment. Runtime reads
 its trusted key from `runtime_key_partition` on every verification, allowing
 J-Link to replace the linked default key without rebuilding runtime.
+
+The STM32L071 profile omits P-256 verification to fit its SRAM budget. It uses
+the same packaged image format and checks the payload CRC before loading or
+committing an image. The CRC detects corruption without authenticating the
+application.
 
 SDK maintainers must rebuild and distribute runtime once for this new Flash
 layout and key-reading implementation. Older prebuilt runtimes that embed their
@@ -85,7 +91,6 @@ Future key changes require J-Link reflashing, but no further Zephyr builds.
 | --- | --- | --- | --- |
 | RAK4631 | `0x000EB000` | `0x1000` | `0 / 0xEB000` |
 | RAK3172P/T | `0x08030800` | `0x800` | `0 / 0x30800` |
-| RAK4200 | `0x08017800` | `0x800` | `0 / 0x17800` |
 
 The region is carved from the end of the former runtime partition. Application
 and settings addresses are unchanged. The Devicetree partition is the runtime

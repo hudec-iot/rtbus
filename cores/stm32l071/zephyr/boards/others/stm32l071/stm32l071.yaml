@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: MPL-2.0
+identifier: stm32l071
+name: RTBus STM32L071KB
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+  - gnuarmemb
+ram: 20
+flash: 128
+supported:
+  - gpio
+  - uart
+vendor: others

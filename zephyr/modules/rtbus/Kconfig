@@ -41,6 +41,14 @@ config RTBUS_NATIVE_SERVICE
       installs the existing runtime ABI table, and runs the native application
       thread.
 
+config RTBUS_NATIVE_EVENT_QUEUE_DEPTH
+    int "Native application event queue depth"
+    depends on RTBUS_NATIVE_SERVICE
+    default 8
+    range 1 8
+    help
+      Number of runtime events that can wait for native application dispatch.
+
 config RTBUS_NATIVE_GPIO_IRQ_COUNT
     int "Maximum simultaneous native GPIO interrupt registrations"
     depends on RTBUS_NATIVE_SERVICE
@@ -150,6 +158,13 @@ config RTBUS_IMAGE_VERIFY_P256
       Enable the PSA provider and algorithms in the runtime configuration
       (see app-p256.conf), rather than selecting them from this service.
 
+config RTBUS_IMAGE_ALLOW_UNVERIFIED
+    bool "Allow application images without authenticating the signature"
+    depends on RTBUS_NATIVE_SERVICE
+    help
+      Allow loading and storing application images when P-256 verification
+      is disabled. Keep the existing image format and payload CRC checks.
+      The CRC detects corruption but does not authenticate the image.
 
 config RTBUS_YMODEM_FLASH_STORE
     bool "Store YMODEM DFU payloads to flash"
